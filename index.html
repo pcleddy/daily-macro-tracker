@@ -233,6 +233,17 @@
   .custom-summary {
     font-size: 13px; color: #94a3b8; font-weight: 600;
   }
+  .custom-input {
+    padding: 7px 10px; border-radius: 6px; border: 1px solid #475569;
+    background: #0f172a; color: #e2e8f0; font-size: 13px; outline: none;
+    transition: border-color 0.15s; width: 80px; text-align: center;
+  }
+  .custom-input:focus { border-color: #4ade80; }
+  .custom-input::placeholder { color: #475569; }
+  .custom-input.name-input { width: 200px; text-align: left; }
+  .custom-fields { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .custom-field-group { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  .custom-field-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px; color: #64748b; }
 
   .preview-label {
     font-size: 12px; color: #64748b; margin-bottom: 12px; text-align: center;
@@ -401,7 +412,7 @@ let state = {
   searchQuery: "",
   panelWidth: 680,
   profile: { sex: null, height: null, weight: null, age: null, goal: null, activity: null, lowCarb: false, lcDeficit: null, lcProtein: null, lcCarbs: null },
-  custom: { cal: null, pro: null, carb: null, fat: null }
+  custom: { name: '', cal: '', pro: '', carb: '', fat: '' }
 };
 
 const heightOptions = [
@@ -822,41 +833,33 @@ function render() {
       <!-- CUSTOM MACRO ENTRY -->
       <div class="custom-entry-pane">
         <h3>Quick Add Custom Item</h3>
-        <div class="profile-row">
-          <span class="profile-row-label">Calories</span>
-          <div class="pill-group">
-            ${[50,100,150,200,250,300,400,500,600,800,1000].map(v => `
-              <button class="pill-btn${state.custom.cal === v ? ' active' : ''}" data-custom="cal" data-val="${v}">${v}</button>
-            `).join('')}
+        <div class="custom-fields" style="margin-bottom:10px;">
+          <div class="custom-field-group">
+            <span class="custom-field-label">Name</span>
+            <input type="text" class="custom-input name-input" id="customName" placeholder="e.g. Protein shake" value="${state.custom.name}" />
           </div>
         </div>
-        <div class="profile-row">
-          <span class="profile-row-label">Protein</span>
-          <div class="pill-group">
-            ${[0,5,10,15,20,25,30,40,50].map(v => `
-              <button class="pill-btn${state.custom.pro === v ? ' active' : ''}" data-custom="pro" data-val="${v}">${v}g</button>
-            `).join('')}
+        <div class="custom-fields">
+          <div class="custom-field-group">
+            <span class="custom-field-label" style="color:#fb923c;">Calories</span>
+            <input type="number" class="custom-input" id="customCal" placeholder="0" value="${state.custom.cal}" min="0" />
           </div>
-        </div>
-        <div class="profile-row">
-          <span class="profile-row-label">Carbs</span>
-          <div class="pill-group">
-            ${[0,5,10,15,20,25,30,40,50,75,100].map(v => `
-              <button class="pill-btn${state.custom.carb === v ? ' active' : ''}" data-custom="carb" data-val="${v}">${v}g</button>
-            `).join('')}
+          <div class="custom-field-group">
+            <span class="custom-field-label" style="color:#4ade80;">Protein (g)</span>
+            <input type="number" class="custom-input" id="customPro" placeholder="0" value="${state.custom.pro}" min="0" />
           </div>
-        </div>
-        <div class="profile-row">
-          <span class="profile-row-label">Fat</span>
-          <div class="pill-group">
-            ${[0,5,10,15,20,25,30,40,50].map(v => `
-              <button class="pill-btn${state.custom.fat === v ? ' active' : ''}" data-custom="fat" data-val="${v}">${v}g</button>
-            `).join('')}
+          <div class="custom-field-group">
+            <span class="custom-field-label" style="color:#a78bfa;">Carbs (g)</span>
+            <input type="number" class="custom-input" id="customCarb" placeholder="0" value="${state.custom.carb}" min="0" />
+          </div>
+          <div class="custom-field-group">
+            <span class="custom-field-label" style="color:#fb7185;">Fat (g)</span>
+            <input type="number" class="custom-input" id="customFat" placeholder="0" value="${state.custom.fat}" min="0" />
           </div>
         </div>
         <div class="custom-save-row">
-          <button class="save-btn" id="customSaveBtn" ${state.custom.cal === null ? 'disabled' : ''}>Add Custom to Tracker</button>
-          ${state.custom.cal !== null ? `<span class="custom-summary">${state.custom.cal} cal, ${state.custom.pro || 0}p, ${state.custom.carb || 0}c, ${state.custom.fat || 0}f</span>` : ''}
+          <button class="save-btn" id="customSaveBtn" ${!state.custom.cal ? 'disabled' : ''}>Add Custom to Tracker</button>
+          ${state.custom.cal ? `<span class="custom-summary">${state.custom.cal} cal, ${state.custom.pro || 0}p, ${state.custom.carb || 0}c, ${state.custom.fat || 0}f</span>` : ''}
         </div>
       </div>
 
@@ -936,33 +939,44 @@ function bindEvents() {
     });
   }
 
-  // Custom macro pill buttons
-  document.querySelectorAll('.pill-btn[data-custom]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const field = btn.dataset.custom;
-      const val = parseInt(btn.dataset.val);
-      state.custom[field] = state.custom[field] === val ? null : val; // toggle
-      render();
-    });
+  // Custom macro text inputs — update state without re-rendering (to keep focus)
+  const customFields = [
+    { id: 'customName', key: 'name', parse: v => v },
+    { id: 'customCal',  key: 'cal',  parse: v => v === '' ? '' : parseInt(v) || 0 },
+    { id: 'customPro',  key: 'pro',  parse: v => v === '' ? '' : parseInt(v) || 0 },
+    { id: 'customCarb', key: 'carb', parse: v => v === '' ? '' : parseInt(v) || 0 },
+    { id: 'customFat',  key: 'fat',  parse: v => v === '' ? '' : parseInt(v) || 0 },
+  ];
+  customFields.forEach(f => {
+    const el = document.getElementById(f.id);
+    if (el) {
+      el.addEventListener('input', e => {
+        state.custom[f.key] = f.parse(e.target.value);
+        // Update save button and summary without full re-render
+        const btn = document.getElementById('customSaveBtn');
+        if (btn) btn.disabled = !state.custom.cal;
+      });
+    }
   });
 
   // Custom save button
   const customSaveBtn = document.getElementById('customSaveBtn');
   if (customSaveBtn) {
     customSaveBtn.addEventListener('click', () => {
-      if (state.custom.cal === null) return;
+      if (!state.custom.cal) return;
+      const label = state.custom.name.trim() || 'Custom Item';
       state.dailyItems.push({
-        name: 'Custom Item',
+        name: label,
         amountLabel: 'manual',
         grams: 0,
         macros: {
-          cal: state.custom.cal || 0,
-          pro: state.custom.pro || 0,
-          carb: state.custom.carb || 0,
-          fat: state.custom.fat || 0
+          cal: parseInt(state.custom.cal) || 0,
+          pro: parseInt(state.custom.pro) || 0,
+          carb: parseInt(state.custom.carb) || 0,
+          fat: parseInt(state.custom.fat) || 0
         }
       });
-      state.custom = { cal: null, pro: null, carb: null, fat: null };
+      state.custom = { name: '', cal: '', pro: '', carb: '', fat: '' };
       render();
     });
   }
