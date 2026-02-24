@@ -74,7 +74,7 @@
   .empty-state p { font-size: 13px; line-height: 1.5; }
 
   /* RIGHT PANEL */
-  .right-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .right-panel { flex: 1; display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden; }
 
   /* TOP PANE — Ingredients + Amounts */
   .top-pane {
@@ -192,6 +192,21 @@
   .tc-carb { background: #1e1b4b; } .tc-carb .tc-label { color: #c4b5fd; } .tc-carb .tc-value { color: #a78bfa; }
   .tc-fat { background: #4c0519; } .tc-fat .tc-label { color: #fda4af; } .tc-fat .tc-value { color: #fb7185; }
   .target-note { font-size: 10px; color: #475569; text-align: center; margin-top: 8px; font-style: italic; }
+
+  /* CUSTOM MACRO ENTRY */
+  .custom-entry-pane {
+    border-bottom: 2px solid #334155; padding: 14px 20px; flex-shrink: 0; background: #1a2a1a;
+  }
+  .custom-entry-pane h3 {
+    font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #4ade80; margin-bottom: 10px;
+  }
+  .custom-save-row {
+    display: flex; align-items: center; gap: 14px; margin-top: 12px; padding-top: 10px;
+    border-top: 1px solid #334155;
+  }
+  .custom-summary {
+    font-size: 13px; color: #94a3b8; font-weight: 600;
+  }
 
   .preview-label {
     font-size: 12px; color: #64748b; margin-bottom: 12px; text-align: center;
@@ -359,9 +374,15 @@ let state = {
   dailyItems: [],
   searchQuery: "",
   panelWidth: 680,
-  profile: { sex: null, weight: null, age: null, goal: null, activity: null }
+  profile: { sex: null, height: null, weight: null, age: null, goal: null, activity: null },
+  custom: { cal: null, pro: null, carb: null, fat: null }
 };
 
+const heightOptions = [
+  {label:"5'0\"", cm:152}, {label:"5'2\"", cm:157}, {label:"5'4\"", cm:163},
+  {label:"5'6\"", cm:168}, {label:"5'8\"", cm:173}, {label:"5'10\"", cm:178},
+  {label:"6'0\"", cm:183}, {label:"6'2\"", cm:188}, {label:"6'4\"", cm:193}, {label:"6'6\"", cm:198},
+];
 const weightOptions = [100, 120, 140, 160, 180, 200, 225, 250, 275, 300];
 const ageOptions = [20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80];
 
@@ -405,28 +426,32 @@ const goalOptions = [
   { key: 'bulk_fast', label: 'Aggressive Bulk',  offset: 500  },
 ];
 
-// Mifflin-St Jeor BMR → TDEE → goal-adjusted → macro split
+// Mifflin-St Jeor BMR → TDEE → goal-adjusted → protein-per-lb macro split
 function calcDailyTargets() {
   const p = state.profile;
-  if (!p.sex || !p.weight || !p.age || !p.goal || !p.activity) return null;
-  const wKg = p.weight * 0.4536; // lbs to kg
-  const hCm = p.sex === 'male' ? 177 : 163;  // rough average height assumption
+  if (!p.sex || !p.height || !p.weight || !p.age || !p.goal || !p.activity) return null;
+  const wKg = p.weight * 0.4536;
+  const hCm = p.height; // now actual height in cm
   const age = p.age;
 
-  // Mifflin-St Jeor
+  // Mifflin-St Jeor: BMR = 10m + 6.25h - 5a + s
   let bmr = 10 * wKg + 6.25 * hCm - 5 * age;
   bmr += p.sex === 'male' ? 5 : -161;
 
   const actMult = activityOptions.find(a => a.key === p.activity).mult;
   const goalOff = goalOptions.find(g => g.key === p.goal).offset;
-  const tdee = Math.round(bmr * actMult + goalOff);
+  const goalCal = Math.round(bmr * actMult + goalOff);
 
-  // Macro split: ~30% protein, ~40% carbs, ~30% fat
-  const proGrams = Math.round((tdee * 0.30) / 4);
-  const carbGrams = Math.round((tdee * 0.40) / 4);
-  const fatGrams = Math.round((tdee * 0.30) / 9);
+  // Protein: 1g per lb body weight (evidence-based for body composition)
+  const proGrams = Math.round(p.weight * 1.0);
+  const proCal = proGrams * 4;
 
-  return { cal: tdee, pro: proGrams, carb: carbGrams, fat: fatGrams };
+  // Remaining calories split ~55% carbs / ~45% fat
+  const remaining = Math.max(0, goalCal - proCal);
+  const carbGrams = Math.round((remaining * 0.55) / 4);
+  const fatGrams = Math.round((remaining * 0.45) / 9);
+
+  return { cal: goalCal, pro: proGrams, carb: carbGrams, fat: fatGrams };
 }
 
 function calcMacros(ingredient, grams) {
@@ -556,6 +581,84 @@ function render() {
         </div>
       </div>
 
+      <!-- BOTTOM PANE — Macro Preview + Save -->
+      <div class="bottom-pane">
+        ${preview ? `
+          <div class="preview-label">
+            <strong>${sel.name}</strong> &mdash; ${amt.label} (${amt.g}g)
+          </div>
+          <div class="macro-preview">
+            <div class="macro-card mc-cal">
+              <div class="mc-label">Calories</div>
+              <div class="mc-value">${preview.cal}</div>
+              <div class="mc-unit">kcal</div>
+            </div>
+            <div class="macro-card mc-pro">
+              <div class="mc-label">Protein</div>
+              <div class="mc-value">${preview.pro}</div>
+              <div class="mc-unit">grams</div>
+            </div>
+            <div class="macro-card mc-carb">
+              <div class="mc-label">Carbs</div>
+              <div class="mc-value">${preview.carb}</div>
+              <div class="mc-unit">grams</div>
+            </div>
+            <div class="macro-card mc-fat">
+              <div class="mc-label">Fat</div>
+              <div class="mc-value">${preview.fat}</div>
+              <div class="mc-unit">grams</div>
+            </div>
+          </div>
+          <button class="save-btn" id="saveBtn">Save to Daily Tracker</button>
+        ` : `
+          <div class="bottom-empty">
+            Select an ingredient and amount to preview macros
+            <div class="hint">Macros will appear here</div>
+          </div>
+        `}
+      </div>
+
+      <!-- CUSTOM MACRO ENTRY -->
+      <div class="custom-entry-pane">
+        <h3>Quick Add Custom Item</h3>
+        <div class="profile-row">
+          <span class="profile-row-label">Calories</span>
+          <div class="pill-group">
+            ${[50,100,150,200,250,300,400,500,600,800,1000].map(v => `
+              <button class="pill-btn${state.custom.cal === v ? ' active' : ''}" data-custom="cal" data-val="${v}">${v}</button>
+            `).join('')}
+          </div>
+        </div>
+        <div class="profile-row">
+          <span class="profile-row-label">Protein</span>
+          <div class="pill-group">
+            ${[0,5,10,15,20,25,30,40,50].map(v => `
+              <button class="pill-btn${state.custom.pro === v ? ' active' : ''}" data-custom="pro" data-val="${v}">${v}g</button>
+            `).join('')}
+          </div>
+        </div>
+        <div class="profile-row">
+          <span class="profile-row-label">Carbs</span>
+          <div class="pill-group">
+            ${[0,5,10,15,20,25,30,40,50,75,100].map(v => `
+              <button class="pill-btn${state.custom.carb === v ? ' active' : ''}" data-custom="carb" data-val="${v}">${v}g</button>
+            `).join('')}
+          </div>
+        </div>
+        <div class="profile-row">
+          <span class="profile-row-label">Fat</span>
+          <div class="pill-group">
+            ${[0,5,10,15,20,25,30,40,50].map(v => `
+              <button class="pill-btn${state.custom.fat === v ? ' active' : ''}" data-custom="fat" data-val="${v}">${v}g</button>
+            `).join('')}
+          </div>
+        </div>
+        <div class="custom-save-row">
+          <button class="save-btn" id="customSaveBtn" ${state.custom.cal === null ? 'disabled' : ''}>Add Custom to Tracker</button>
+          ${state.custom.cal !== null ? `<span class="custom-summary">${state.custom.cal} cal, ${state.custom.pro || 0}p, ${state.custom.carb || 0}c, ${state.custom.fat || 0}f</span>` : ''}
+        </div>
+      </div>
+
       <!-- PROFILE & GOALS PANE -->
       <div class="profile-pane">
         <h3>Profile & Daily Targets</h3>
@@ -567,10 +670,18 @@ function render() {
           </div>
         </div>
         <div class="profile-row">
+          <span class="profile-row-label">Height</span>
+          <div class="pill-group">
+            ${heightOptions.map(h => `
+              <button class="pill-btn${state.profile.height === h.cm ? ' active' : ''}" data-profile="height" data-val="${h.cm}">${h.label}</button>
+            `).join('')}
+          </div>
+        </div>
+        <div class="profile-row">
           <span class="profile-row-label">Weight</span>
           <div class="pill-group">
             ${weightOptions.map(w => `
-              <button class="pill-btn${state.profile.weight === w ? ' active' : ''}" data-profile="weight" data-val="${w}">${w} lbs</button>
+              <button class="pill-btn${state.profile.weight === w ? ' active' : ''}" data-profile="weight" data-val="${w}">${w}</button>
             `).join('')}
           </div>
         </div>
@@ -608,46 +719,9 @@ function render() {
               <div class="target-chip tc-carb"><div class="tc-label">Carbs</div><div class="tc-value">${targets.carb}g</div><div class="tc-unit">~40%</div></div>
               <div class="target-chip tc-fat"><div class="tc-label">Fat</div><div class="tc-value">${targets.fat}g</div><div class="tc-unit">~30%</div></div>
             </div>
-            <div class="target-note">Approximate targets using Mifflin-St Jeor equation (assumes avg height)</div>
+            <div class="target-note">Mifflin-St Jeor BMR &bull; Protein: 1g/lb body weight &bull; Remaining cal: 55% carbs, 45% fat</div>
           `;
         })()}
-      </div>
-
-      <!-- BOTTOM PANE -->
-      <div class="bottom-pane">
-        ${preview ? `
-          <div class="preview-label">
-            <strong>${sel.name}</strong> &mdash; ${amt.label} (${amt.g}g)
-          </div>
-          <div class="macro-preview">
-            <div class="macro-card mc-cal">
-              <div class="mc-label">Calories</div>
-              <div class="mc-value">${preview.cal}</div>
-              <div class="mc-unit">kcal</div>
-            </div>
-            <div class="macro-card mc-pro">
-              <div class="mc-label">Protein</div>
-              <div class="mc-value">${preview.pro}</div>
-              <div class="mc-unit">grams</div>
-            </div>
-            <div class="macro-card mc-carb">
-              <div class="mc-label">Carbs</div>
-              <div class="mc-value">${preview.carb}</div>
-              <div class="mc-unit">grams</div>
-            </div>
-            <div class="macro-card mc-fat">
-              <div class="mc-label">Fat</div>
-              <div class="mc-value">${preview.fat}</div>
-              <div class="mc-unit">grams</div>
-            </div>
-          </div>
-          <button class="save-btn" id="saveBtn">Save to Daily Tracker</button>
-        ` : `
-          <div class="bottom-empty">
-            Select an ingredient and amount to preview macros
-            <div class="hint">Macros will appear here</div>
-          </div>
-        `}
       </div>
     </div>
   `;
@@ -711,13 +785,44 @@ function bindEvents() {
     });
   }
 
+  // Custom macro pill buttons
+  document.querySelectorAll('.pill-btn[data-custom]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const field = btn.dataset.custom;
+      const val = parseInt(btn.dataset.val);
+      state.custom[field] = state.custom[field] === val ? null : val; // toggle
+      render();
+    });
+  });
+
+  // Custom save button
+  const customSaveBtn = document.getElementById('customSaveBtn');
+  if (customSaveBtn) {
+    customSaveBtn.addEventListener('click', () => {
+      if (state.custom.cal === null) return;
+      state.dailyItems.push({
+        name: 'Custom Item',
+        amountLabel: 'manual',
+        grams: 0,
+        macros: {
+          cal: state.custom.cal || 0,
+          pro: state.custom.pro || 0,
+          carb: state.custom.carb || 0,
+          fat: state.custom.fat || 0
+        }
+      });
+      state.custom = { cal: null, pro: null, carb: null, fat: null };
+      render();
+    });
+  }
+
   // Profile pill buttons
   document.querySelectorAll('.pill-btn[data-profile]').forEach(btn => {
     btn.addEventListener('click', () => {
       const field = btn.dataset.profile;
       const val = btn.dataset.val;
-      // weight and age are numeric
-      state.profile[field] = (field === 'weight' || field === 'age') ? parseInt(val) : val;
+      // weight, height, and age are numeric
+      state.profile[field] = (field === 'weight' || field === 'age' || field === 'height') ? parseInt(val) : val;
       render();
     });
   });
