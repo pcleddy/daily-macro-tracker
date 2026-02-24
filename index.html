@@ -12,9 +12,15 @@
 
   /* LEFT PANEL — Daily Tracker */
   .daily-panel {
-    width: 340px; min-width: 340px; background: #1e293b; border-right: 1px solid #334155;
-    display: flex; flex-direction: column; overflow: hidden;
+    width: 680px; min-width: 280px; max-width: 80vw; background: #1e293b; border-right: 1px solid #334155;
+    display: flex; flex-direction: column; overflow: hidden; position: relative;
   }
+  .resize-handle {
+    position: absolute; top: 0; right: -4px; width: 8px; height: 100%;
+    cursor: col-resize; z-index: 10; background: transparent;
+    transition: background 0.15s;
+  }
+  .resize-handle:hover, .resize-handle.active { background: #3b82f6; }
   .daily-panel h2 {
     padding: 16px 20px 12px; font-size: 15px; text-transform: uppercase; letter-spacing: 1.2px;
     color: #94a3b8; border-bottom: 1px solid #334155; flex-shrink: 0;
@@ -26,7 +32,7 @@
     border: 1px solid #334155; transition: background 0.15s;
   }
   .daily-item:hover { background: #2d3f54; }
-  .daily-item .item-name { font-weight: 600; color: #f1f5f9; max-width: 130px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .daily-item .item-name { font-weight: 600; color: #f1f5f9; max-width: 260px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .daily-item .item-amount { color: #94a3b8; font-size: 11px; }
   .daily-item .item-macros { display: flex; gap: 8px; font-size: 11px; }
   .daily-item .item-macros span { padding: 2px 6px; border-radius: 4px; font-weight: 600; }
@@ -151,6 +157,41 @@
 
   .bottom-empty { color: #475569; font-size: 14px; text-align: center; }
   .bottom-empty .hint { font-size: 12px; margin-top: 6px; }
+
+  /* PROFILE & GOALS PANE */
+  .profile-pane {
+    border-bottom: 2px solid #334155; padding: 14px 20px; flex-shrink: 0; background: #1a2235;
+    overflow-y: auto; max-height: 320px;
+  }
+  .profile-pane h3 {
+    font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #64748b; margin-bottom: 10px;
+  }
+  .profile-row { display: flex; align-items: center; margin-bottom: 10px; gap: 8px; flex-wrap: wrap; }
+  .profile-row-label {
+    font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.8px;
+    width: 70px; flex-shrink: 0; font-weight: 600;
+  }
+  .pill-group { display: flex; gap: 4px; flex-wrap: wrap; }
+  .pill-btn {
+    padding: 5px 12px; border-radius: 20px; border: 1px solid #475569;
+    background: #1e293b; color: #94a3b8; font-size: 12px; cursor: pointer;
+    transition: all 0.12s; white-space: nowrap;
+  }
+  .pill-btn:hover { border-color: #60a5fa; color: #e2e8f0; }
+  .pill-btn.active { background: #1e3a5f; border-color: #3b82f6; color: #60a5fa; font-weight: 600; }
+
+  .target-display { display: flex; gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px solid #334155; }
+  .target-chip {
+    flex: 1; border-radius: 8px; padding: 8px 10px; text-align: center;
+  }
+  .target-chip .tc-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.8px; }
+  .target-chip .tc-value { font-size: 18px; font-weight: 700; }
+  .target-chip .tc-unit { font-size: 10px; color: #94a3b8; }
+  .tc-cal { background: #422006; } .tc-cal .tc-label { color: #fdba74; } .tc-cal .tc-value { color: #fb923c; }
+  .tc-pro { background: #052e16; } .tc-pro .tc-label { color: #86efac; } .tc-pro .tc-value { color: #4ade80; }
+  .tc-carb { background: #1e1b4b; } .tc-carb .tc-label { color: #c4b5fd; } .tc-carb .tc-value { color: #a78bfa; }
+  .tc-fat { background: #4c0519; } .tc-fat .tc-label { color: #fda4af; } .tc-fat .tc-value { color: #fb7185; }
+  .target-note { font-size: 10px; color: #475569; text-align: center; margin-top: 8px; font-style: italic; }
 
   .preview-label {
     font-size: 12px; color: #64748b; margin-bottom: 12px; text-align: center;
@@ -316,8 +357,77 @@ let state = {
   selectedIngredient: null,
   selectedAmount: null,
   dailyItems: [],
-  searchQuery: ""
+  searchQuery: "",
+  panelWidth: 680,
+  profile: { sex: null, weight: null, age: null, goal: null, activity: null }
 };
+
+const weightOptions = [100, 120, 140, 160, 180, 200, 225, 250, 275, 300];
+const ageOptions = [20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80];
+
+// ============================================================
+// LOCAL STORAGE — persist state across sessions
+// ============================================================
+function saveState() {
+  try {
+    const toSave = { dailyItems: state.dailyItems, profile: state.profile, panelWidth: state.panelWidth };
+    localStorage.setItem('macroTrackerState', JSON.stringify(toSave));
+  } catch(e) {}
+}
+
+function loadState() {
+  try {
+    const saved = localStorage.getItem('macroTrackerState');
+    if (!saved) return;
+    const parsed = JSON.parse(saved);
+    if (parsed.dailyItems) state.dailyItems = parsed.dailyItems;
+    if (parsed.profile) state.profile = parsed.profile;
+    if (parsed.panelWidth) state.panelWidth = parsed.panelWidth;
+  } catch(e) {}
+}
+
+loadState();
+
+// Activity multipliers (Harris-Benedict)
+const activityOptions = [
+  { key: 'sedentary',  label: 'Sedentary',           mult: 1.2  },
+  { key: 'light',      label: 'Lightly Active',      mult: 1.375 },
+  { key: 'moderate',   label: 'Moderately Active',   mult: 1.55 },
+  { key: 'very',       label: 'Very Active',         mult: 1.725 },
+  { key: 'extra',      label: 'Extra Active',        mult: 1.9  },
+];
+
+const goalOptions = [
+  { key: 'cut_fast',  label: 'Aggressive Cut',  offset: -500 },
+  { key: 'cut_slow',  label: 'Moderate Cut',    offset: -250 },
+  { key: 'maintain',  label: 'Maintain',         offset: 0    },
+  { key: 'bulk_slow', label: 'Lean Bulk',        offset: 250  },
+  { key: 'bulk_fast', label: 'Aggressive Bulk',  offset: 500  },
+];
+
+// Mifflin-St Jeor BMR → TDEE → goal-adjusted → macro split
+function calcDailyTargets() {
+  const p = state.profile;
+  if (!p.sex || !p.weight || !p.age || !p.goal || !p.activity) return null;
+  const wKg = p.weight * 0.4536; // lbs to kg
+  const hCm = p.sex === 'male' ? 177 : 163;  // rough average height assumption
+  const age = p.age;
+
+  // Mifflin-St Jeor
+  let bmr = 10 * wKg + 6.25 * hCm - 5 * age;
+  bmr += p.sex === 'male' ? 5 : -161;
+
+  const actMult = activityOptions.find(a => a.key === p.activity).mult;
+  const goalOff = goalOptions.find(g => g.key === p.goal).offset;
+  const tdee = Math.round(bmr * actMult + goalOff);
+
+  // Macro split: ~30% protein, ~40% carbs, ~30% fat
+  const proGrams = Math.round((tdee * 0.30) / 4);
+  const carbGrams = Math.round((tdee * 0.40) / 4);
+  const fatGrams = Math.round((tdee * 0.30) / 9);
+
+  return { cal: tdee, pro: proGrams, carb: carbGrams, fat: fatGrams };
+}
 
 function calcMacros(ingredient, grams) {
   const p = ingredient.per_g;
@@ -361,7 +471,8 @@ function render() {
 
   app.innerHTML = `
     <!-- LEFT: Daily Tracker -->
-    <div class="daily-panel">
+    <div class="daily-panel" id="dailyPanel" style="width:${state.panelWidth}px">
+      <div class="resize-handle" id="resizeHandle"></div>
       <h2>Daily Tracker</h2>
       <div class="daily-items">
         ${state.dailyItems.length === 0 ? `
@@ -445,6 +556,63 @@ function render() {
         </div>
       </div>
 
+      <!-- PROFILE & GOALS PANE -->
+      <div class="profile-pane">
+        <h3>Profile & Daily Targets</h3>
+        <div class="profile-row">
+          <span class="profile-row-label">Sex</span>
+          <div class="pill-group">
+            <button class="pill-btn${state.profile.sex === 'male' ? ' active' : ''}" data-profile="sex" data-val="male">Male</button>
+            <button class="pill-btn${state.profile.sex === 'female' ? ' active' : ''}" data-profile="sex" data-val="female">Female</button>
+          </div>
+        </div>
+        <div class="profile-row">
+          <span class="profile-row-label">Weight</span>
+          <div class="pill-group">
+            ${weightOptions.map(w => `
+              <button class="pill-btn${state.profile.weight === w ? ' active' : ''}" data-profile="weight" data-val="${w}">${w} lbs</button>
+            `).join('')}
+          </div>
+        </div>
+        <div class="profile-row">
+          <span class="profile-row-label">Age</span>
+          <div class="pill-group">
+            ${ageOptions.map(a => `
+              <button class="pill-btn${state.profile.age === a ? ' active' : ''}" data-profile="age" data-val="${a}">${a}</button>
+            `).join('')}
+          </div>
+        </div>
+        <div class="profile-row">
+          <span class="profile-row-label">Goal</span>
+          <div class="pill-group">
+            ${goalOptions.map(g => `
+              <button class="pill-btn${state.profile.goal === g.key ? ' active' : ''}" data-profile="goal" data-val="${g.key}">${g.label}</button>
+            `).join('')}
+          </div>
+        </div>
+        <div class="profile-row">
+          <span class="profile-row-label">Activity</span>
+          <div class="pill-group">
+            ${activityOptions.map(a => `
+              <button class="pill-btn${state.profile.activity === a.key ? ' active' : ''}" data-profile="activity" data-val="${a.key}">${a.label}</button>
+            `).join('')}
+          </div>
+        </div>
+        ${(() => {
+          const targets = calcDailyTargets();
+          if (!targets) return '<div class="target-note">Fill in all fields to see your daily macro targets</div>';
+          return `
+            <div class="target-display">
+              <div class="target-chip tc-cal"><div class="tc-label">Calories</div><div class="tc-value">${targets.cal}</div><div class="tc-unit">kcal/day</div></div>
+              <div class="target-chip tc-pro"><div class="tc-label">Protein</div><div class="tc-value">${targets.pro}g</div><div class="tc-unit">~30%</div></div>
+              <div class="target-chip tc-carb"><div class="tc-label">Carbs</div><div class="tc-value">${targets.carb}g</div><div class="tc-unit">~40%</div></div>
+              <div class="target-chip tc-fat"><div class="tc-label">Fat</div><div class="tc-value">${targets.fat}g</div><div class="tc-unit">~30%</div></div>
+            </div>
+            <div class="target-note">Approximate targets using Mifflin-St Jeor equation (assumes avg height)</div>
+          `;
+        })()}
+      </div>
+
       <!-- BOTTOM PANE -->
       <div class="bottom-pane">
         ${preview ? `
@@ -485,6 +653,8 @@ function render() {
   `;
 
   bindEvents();
+  initResize();
+  saveState();
 }
 
 // ============================================================
@@ -541,6 +711,17 @@ function bindEvents() {
     });
   }
 
+  // Profile pill buttons
+  document.querySelectorAll('.pill-btn[data-profile]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const field = btn.dataset.profile;
+      const val = btn.dataset.val;
+      // weight and age are numeric
+      state.profile[field] = (field === 'weight' || field === 'age') ? parseInt(val) : val;
+      render();
+    });
+  });
+
   // Remove buttons
   document.querySelectorAll('.remove-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -551,8 +732,47 @@ function bindEvents() {
   });
 }
 
+// ============================================================
+// RESIZE HANDLE — drag to resize left panel
+// ============================================================
+function initResize() {
+  const handle = document.getElementById('resizeHandle');
+  const panel = document.getElementById('dailyPanel');
+  if (!handle || !panel) return;
+
+  let startX, startWidth, dragging = false;
+
+  handle.addEventListener('mousedown', e => {
+    e.preventDefault();
+    dragging = true;
+    startX = e.clientX;
+    startWidth = panel.offsetWidth;
+    handle.classList.add('active');
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+  });
+
+  document.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    const delta = e.clientX - startX;
+    const newWidth = Math.max(280, Math.min(window.innerWidth * 0.8, startWidth + delta));
+    panel.style.width = newWidth + 'px';
+    state.panelWidth = newWidth;
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (!dragging) return;
+    dragging = false;
+    handle.classList.remove('active');
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+    saveState();
+  });
+}
+
 // Initial render
 render();
+initResize();
 </script>
 </body>
 </html>
