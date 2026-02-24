@@ -170,7 +170,7 @@
   /* PROFILE & GOALS PANE */
   .profile-pane {
     border-bottom: 2px solid #334155; padding: 14px 20px; flex-shrink: 0; background: #1a2235;
-    overflow-y: auto; max-height: 320px;
+    overflow-y: auto; max-height: 440px;
   }
   .profile-pane h3 {
     font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #64748b; margin-bottom: 10px;
@@ -201,6 +201,23 @@
   .tc-carb { background: #1e1b4b; } .tc-carb .tc-label { color: #c4b5fd; } .tc-carb .tc-value { color: #a78bfa; }
   .tc-fat { background: #4c0519; } .tc-fat .tc-label { color: #fda4af; } .tc-fat .tc-value { color: #fb7185; }
   .target-note { font-size: 10px; color: #475569; text-align: center; margin-top: 8px; font-style: italic; }
+
+  /* Mode toggle */
+  .mode-toggle {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 14px;
+    padding-bottom: 12px; border-bottom: 1px solid #334155;
+  }
+  .mode-toggle label {
+    font-size: 12px; color: #e2e8f0; cursor: pointer; display: flex; align-items: center; gap: 8px;
+  }
+  .mode-toggle input[type="checkbox"] {
+    width: 16px; height: 16px; accent-color: #f59e0b; cursor: pointer;
+  }
+  .mode-label-std { color: #60a5fa; font-weight: 600; }
+  .mode-label-lc { color: #f59e0b; font-weight: 600; }
+  .lc-active { background: #1a2010 !important; }
+  .lc-active h3 { color: #f59e0b !important; }
+  .lc-detail { font-size: 11px; color: #94a3b8; margin-top: 4px; }
 
   /* CUSTOM MACRO ENTRY */
   .custom-entry-pane {
@@ -383,7 +400,7 @@ let state = {
   dailyItems: [],
   searchQuery: "",
   panelWidth: 680,
-  profile: { sex: null, height: null, weight: null, age: null, goal: null, activity: null },
+  profile: { sex: null, height: null, weight: null, age: null, goal: null, activity: null, lowCarb: false, lcDeficit: null, lcProtein: null, lcCarbs: null },
   custom: { cal: null, pro: null, carb: null, fat: null }
 };
 
@@ -413,6 +430,11 @@ function loadState() {
     if (parsed.dailyItems) state.dailyItems = parsed.dailyItems;
     if (parsed.profile) state.profile = parsed.profile;
     if (parsed.panelWidth) state.panelWidth = parsed.panelWidth;
+    // Migrate old deficit keys to new format
+    const deficitMigration = { slow: 'd500', moderate: 'd750', aggressive: 'd1000' };
+    if (state.profile.lcDeficit && deficitMigration[state.profile.lcDeficit]) {
+      state.profile.lcDeficit = deficitMigration[state.profile.lcDeficit];
+    }
   } catch(e) {}
 }
 
@@ -435,7 +457,59 @@ const goalOptions = [
   { key: 'bulk_fast', label: 'Aggressive Bulk',  offset: 500  },
 ];
 
-// Mifflin-St Jeor BMR → TDEE → goal-adjusted → protein-per-lb macro split
+// Low-Carb Deficit Mode options (fine-grained for custom targeting)
+const lcDeficitOptions = [
+  { key: 'd250',  label: '-250',  offset: -250 },
+  { key: 'd500',  label: '-500',  offset: -500 },
+  { key: 'd600',  label: '-600',  offset: -600 },
+  { key: 'd700',  label: '-700',  offset: -700 },
+  { key: 'd750',  label: '-750',  offset: -750 },
+  { key: 'd800',  label: '-800',  offset: -800 },
+  { key: 'd900',  label: '-900',  offset: -900 },
+  { key: 'd1000', label: '-1000', offset: -1000 },
+  { key: 'd1100', label: '-1100', offset: -1100 },
+  { key: 'd1150', label: '-1150', offset: -1150 },
+  { key: 'd1200', label: '-1200', offset: -1200 },
+  { key: 'd1250', label: '-1250', offset: -1250 },
+  { key: 'd1500', label: '-1500', offset: -1500 },
+];
+const lcProteinOptions = [0.5, 0.6, 0.65, 0.7, 0.8, 0.9, 1.0];
+const lcCarbOptions = [20, 30, 40, 50, 75, 100];
+
+// Low-Carb Deficit calculation
+function calcLowCarbTargets() {
+  const p = state.profile;
+  if (!p.sex || !p.height || !p.weight || !p.age || !p.activity || !p.lcDeficit || !p.lcProtein || p.lcCarbs === null) return null;
+
+  const wKg = p.weight * 0.4536;
+  const hCm = p.height;
+  const age = p.age;
+
+  // Mifflin-St Jeor BMR
+  let bmr = 10 * wKg + 6.25 * hCm - 5 * age;
+  bmr += p.sex === 'male' ? 5 : -161;
+
+  const actMult = activityOptions.find(a => a.key === p.activity).mult;
+  const defOff = lcDeficitOptions.find(d => d.key === p.lcDeficit).offset;
+  const goalCal = Math.round(bmr * actMult + defOff);
+
+  // Protein: user-selected g/lb
+  const proGrams = Math.round(p.weight * p.lcProtein);
+  // Carbs: user-selected ceiling
+  const carbGrams = p.lcCarbs;
+  // Fat: remainder
+  const fatCal = Math.max(0, goalCal - (proGrams * 4) - (carbGrams * 4));
+  const fatGrams = Math.round(fatCal / 9);
+
+  const total = (proGrams * 4) + (carbGrams * 4) + (fatGrams * 9);
+  const proPct = Math.round((proGrams * 4) / total * 100) || 0;
+  const carbPct = Math.round((carbGrams * 4) / total * 100) || 0;
+  const fatPct = Math.round((fatGrams * 9) / total * 100) || 0;
+
+  return { cal: goalCal, pro: proGrams, carb: carbGrams, fat: fatGrams, proPct, carbPct, fatPct, bmr: Math.round(bmr), tdee: Math.round(bmr * actMult) };
+}
+
+// Standard Mode: Mifflin-St Jeor BMR → TDEE → goal-adjusted → protein-per-lb macro split
 function calcDailyTargets() {
   const p = state.profile;
   if (!p.sex || !p.height || !p.weight || !p.age || !p.goal || !p.activity) return null;
@@ -487,6 +561,121 @@ function getFilteredIngredients() {
   if (!state.searchQuery) return ingredients;
   const q = state.searchQuery.toLowerCase();
   return ingredients.filter(i => i.name.toLowerCase().includes(q) || catLabels[i.cat].toLowerCase().includes(q));
+}
+
+// ============================================================
+// PROFILE PANE RENDERER (separate to avoid nested template literal issues)
+// ============================================================
+function renderProfilePane() {
+  const p = state.profile;
+  const isLC = p.lowCarb;
+
+  // Shared rows
+  let html = '<div class="profile-pane' + (isLC ? ' lc-active' : '') + '">';
+  html += '<h3>' + (isLC ? 'Low-Carb Deficit Mode' : 'Profile & Daily Targets') + '</h3>';
+
+  // Mode toggle
+  html += '<div class="mode-toggle"><label><input type="checkbox" id="lowCarbToggle" ' + (isLC ? 'checked' : '') + ' />';
+  html += '<span>Low-Carb Deficit Mode</span></label>';
+  html += '<span class="' + (isLC ? 'mode-label-lc' : 'mode-label-std') + '">' + (isLC ? 'ON' : 'Standard') + '</span></div>';
+
+  // Sex
+  html += '<div class="profile-row"><span class="profile-row-label">Sex</span><div class="pill-group">';
+  html += '<button class="pill-btn' + (p.sex === 'male' ? ' active' : '') + '" data-profile="sex" data-val="male">Male</button>';
+  html += '<button class="pill-btn' + (p.sex === 'female' ? ' active' : '') + '" data-profile="sex" data-val="female">Female</button>';
+  html += '</div></div>';
+
+  // Height
+  html += '<div class="profile-row"><span class="profile-row-label">Height</span><div class="pill-group">';
+  heightOptions.forEach(function(h) {
+    html += '<button class="pill-btn' + (p.height === h.cm ? ' active' : '') + '" data-profile="height" data-val="' + h.cm + '">' + h.label + '</button>';
+  });
+  html += '</div></div>';
+
+  // Weight
+  html += '<div class="profile-row"><span class="profile-row-label">Weight</span><div class="pill-group">';
+  weightOptions.forEach(function(w) {
+    html += '<button class="pill-btn' + (p.weight === w ? ' active' : '') + '" data-profile="weight" data-val="' + w + '">' + w + '</button>';
+  });
+  html += '</div></div>';
+
+  // Age
+  html += '<div class="profile-row"><span class="profile-row-label">Age</span><div class="pill-group">';
+  ageOptions.forEach(function(a) {
+    html += '<button class="pill-btn' + (p.age === a ? ' active' : '') + '" data-profile="age" data-val="' + a + '">' + a + '</button>';
+  });
+  html += '</div></div>';
+
+  // Activity
+  html += '<div class="profile-row"><span class="profile-row-label">Activity</span><div class="pill-group">';
+  activityOptions.forEach(function(a) {
+    html += '<button class="pill-btn' + (p.activity === a.key ? ' active' : '') + '" data-profile="activity" data-val="' + a.key + '">' + a.label + '</button>';
+  });
+  html += '</div></div>';
+
+  if (isLC) {
+    // Deficit
+    html += '<div class="profile-row"><span class="profile-row-label">Deficit</span><div class="pill-group">';
+    lcDeficitOptions.forEach(function(d) {
+      html += '<button class="pill-btn' + (p.lcDeficit === d.key ? ' active' : '') + '" data-profile="lcDeficit" data-val="' + d.key + '">' + d.label + ' cal</button>';
+    });
+    html += '</div></div>';
+
+    // Protein g/lb
+    html += '<div class="profile-row"><span class="profile-row-label">Protein</span><div class="pill-group">';
+    lcProteinOptions.forEach(function(v) {
+      html += '<button class="pill-btn' + (p.lcProtein === v ? ' active' : '') + '" data-profile="lcProtein" data-val="' + v + '">' + v + 'g/lb</button>';
+    });
+    html += '</div></div>';
+
+    // Carb cap
+    html += '<div class="profile-row"><span class="profile-row-label">Carb Cap</span><div class="pill-group">';
+    lcCarbOptions.forEach(function(v) {
+      html += '<button class="pill-btn' + (p.lcCarbs === v ? ' active' : '') + '" data-profile="lcCarbs" data-val="' + v + '">' + v + 'g</button>';
+    });
+    html += '</div></div>';
+
+    // Low-carb targets
+    var t = calcLowCarbTargets();
+    if (!t) {
+      html += '<div class="target-note">Fill in all fields above to calculate</div>';
+    } else {
+      html += '<div class="target-display">';
+      html += '<div class="target-chip tc-cal"><div class="tc-label">Calories</div><div class="tc-value">' + t.cal + '</div><div class="tc-unit">kcal/day</div></div>';
+      html += '<div class="target-chip tc-pro"><div class="tc-label">Protein</div><div class="tc-value">' + t.pro + 'g</div><div class="tc-unit">' + t.proPct + '%</div></div>';
+      html += '<div class="target-chip tc-carb"><div class="tc-label">Carbs</div><div class="tc-value">' + t.carb + 'g</div><div class="tc-unit">' + t.carbPct + '%</div></div>';
+      html += '<div class="target-chip tc-fat"><div class="tc-label">Fat</div><div class="tc-value">' + t.fat + 'g</div><div class="tc-unit">' + t.fatPct + '%</div></div>';
+      html += '</div>';
+      var selDef = lcDeficitOptions.find(function(d) { return d.key === p.lcDeficit; });
+      var defVal = selDef ? selDef.offset : 0;
+      html += '<div class="lc-detail">BMR: ' + t.bmr + ' &bull; TDEE: ' + t.tdee + ' &bull; Deficit: ' + defVal + ' &bull; Target: ' + t.cal + ' kcal</div>';
+      html += '<div class="target-note">Mifflin-St Jeor &bull; Protein: ' + p.lcProtein + 'g/lb &bull; Carbs capped at ' + p.lcCarbs + 'g &bull; Fat fills remainder</div>';
+    }
+  } else {
+    // Standard: Goal row
+    html += '<div class="profile-row"><span class="profile-row-label">Goal</span><div class="pill-group">';
+    goalOptions.forEach(function(g) {
+      html += '<button class="pill-btn' + (p.goal === g.key ? ' active' : '') + '" data-profile="goal" data-val="' + g.key + '">' + g.label + '</button>';
+    });
+    html += '</div></div>';
+
+    // Standard targets
+    var targets = calcDailyTargets();
+    if (!targets) {
+      html += '<div class="target-note">Fill in all fields to see your daily macro targets</div>';
+    } else {
+      html += '<div class="target-display">';
+      html += '<div class="target-chip tc-cal"><div class="tc-label">Calories</div><div class="tc-value">' + targets.cal + '</div><div class="tc-unit">kcal/day</div></div>';
+      html += '<div class="target-chip tc-pro"><div class="tc-label">Protein</div><div class="tc-value">' + targets.pro + 'g</div><div class="tc-unit">1g/lb</div></div>';
+      html += '<div class="target-chip tc-carb"><div class="tc-label">Carbs</div><div class="tc-value">' + targets.carb + 'g</div><div class="tc-unit">55% rem</div></div>';
+      html += '<div class="target-chip tc-fat"><div class="tc-label">Fat</div><div class="tc-value">' + targets.fat + 'g</div><div class="tc-unit">45% rem</div></div>';
+      html += '</div>';
+      html += '<div class="target-note">Mifflin-St Jeor BMR &bull; Protein: 1g/lb body weight &bull; Remaining cal: 55% carbs, 45% fat</div>';
+    }
+  }
+
+  html += '</div>';
+  return html;
 }
 
 // ============================================================
@@ -672,69 +861,8 @@ function render() {
       </div>
 
       <!-- PROFILE & GOALS PANE -->
-      <div class="profile-pane">
-        <h3>Profile & Daily Targets</h3>
-        <div class="profile-row">
-          <span class="profile-row-label">Sex</span>
-          <div class="pill-group">
-            <button class="pill-btn${state.profile.sex === 'male' ? ' active' : ''}" data-profile="sex" data-val="male">Male</button>
-            <button class="pill-btn${state.profile.sex === 'female' ? ' active' : ''}" data-profile="sex" data-val="female">Female</button>
-          </div>
-        </div>
-        <div class="profile-row">
-          <span class="profile-row-label">Height</span>
-          <div class="pill-group">
-            ${heightOptions.map(h => `
-              <button class="pill-btn${state.profile.height === h.cm ? ' active' : ''}" data-profile="height" data-val="${h.cm}">${h.label}</button>
-            `).join('')}
-          </div>
-        </div>
-        <div class="profile-row">
-          <span class="profile-row-label">Weight</span>
-          <div class="pill-group">
-            ${weightOptions.map(w => `
-              <button class="pill-btn${state.profile.weight === w ? ' active' : ''}" data-profile="weight" data-val="${w}">${w}</button>
-            `).join('')}
-          </div>
-        </div>
-        <div class="profile-row">
-          <span class="profile-row-label">Age</span>
-          <div class="pill-group">
-            ${ageOptions.map(a => `
-              <button class="pill-btn${state.profile.age === a ? ' active' : ''}" data-profile="age" data-val="${a}">${a}</button>
-            `).join('')}
-          </div>
-        </div>
-        <div class="profile-row">
-          <span class="profile-row-label">Goal</span>
-          <div class="pill-group">
-            ${goalOptions.map(g => `
-              <button class="pill-btn${state.profile.goal === g.key ? ' active' : ''}" data-profile="goal" data-val="${g.key}">${g.label}</button>
-            `).join('')}
-          </div>
-        </div>
-        <div class="profile-row">
-          <span class="profile-row-label">Activity</span>
-          <div class="pill-group">
-            ${activityOptions.map(a => `
-              <button class="pill-btn${state.profile.activity === a.key ? ' active' : ''}" data-profile="activity" data-val="${a.key}">${a.label}</button>
-            `).join('')}
-          </div>
-        </div>
-        ${(() => {
-          const targets = calcDailyTargets();
-          if (!targets) return '<div class="target-note">Fill in all fields to see your daily macro targets</div>';
-          return `
-            <div class="target-display">
-              <div class="target-chip tc-cal"><div class="tc-label">Calories</div><div class="tc-value">${targets.cal}</div><div class="tc-unit">kcal/day</div></div>
-              <div class="target-chip tc-pro"><div class="tc-label">Protein</div><div class="tc-value">${targets.pro}g</div><div class="tc-unit">~30%</div></div>
-              <div class="target-chip tc-carb"><div class="tc-label">Carbs</div><div class="tc-value">${targets.carb}g</div><div class="tc-unit">~40%</div></div>
-              <div class="target-chip tc-fat"><div class="tc-label">Fat</div><div class="tc-value">${targets.fat}g</div><div class="tc-unit">~30%</div></div>
-            </div>
-            <div class="target-note">Mifflin-St Jeor BMR &bull; Protein: 1g/lb body weight &bull; Remaining cal: 55% carbs, 45% fat</div>
-          `;
-        })()}
-      </div>
+      ${renderProfilePane()}
+    </div>
     </div>
   `;
 
@@ -839,13 +967,29 @@ function bindEvents() {
     });
   }
 
+  // Low-carb toggle
+  const lcToggle = document.getElementById('lowCarbToggle');
+  if (lcToggle) {
+    lcToggle.addEventListener('change', e => {
+      state.profile.lowCarb = e.target.checked;
+      render();
+    });
+  }
+
   // Profile pill buttons
+  const numericProfileFields = ['weight', 'age', 'height', 'lcCarbs'];
+  const floatProfileFields = ['lcProtein'];
   document.querySelectorAll('.pill-btn[data-profile]').forEach(btn => {
     btn.addEventListener('click', () => {
       const field = btn.dataset.profile;
       const val = btn.dataset.val;
-      // weight, height, and age are numeric
-      state.profile[field] = (field === 'weight' || field === 'age' || field === 'height') ? parseInt(val) : val;
+      if (floatProfileFields.includes(field)) {
+        state.profile[field] = parseFloat(val);
+      } else if (numericProfileFields.includes(field)) {
+        state.profile[field] = parseInt(val);
+      } else {
+        state.profile[field] = val;
+      }
       render();
     });
   });
