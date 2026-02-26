@@ -117,9 +117,13 @@
     display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 8px;
   }
 
+  /* Amount + Saved Customs wrapper */
+  .amount-wrapper {
+    flex: 1; display: flex; overflow: hidden;
+  }
   /* Amount List */
   .amount-panel {
-    flex: 1; display: flex; flex-direction: column; overflow: hidden;
+    flex: 7; display: flex; flex-direction: column; overflow: hidden;
   }
   .amount-header {
     padding: 14px 20px; border-bottom: 1px solid #334155; flex-shrink: 0; background: #1a2744;
@@ -150,6 +154,32 @@
   .custom-grams-input:focus { border-color: #3b82f6; }
   .custom-grams-input::placeholder { color: #475569; }
   .custom-grams-preview { font-size: 11px; color: #64748b; }
+
+  /* Saved Customs Panel */
+  .saved-customs-panel {
+    flex: 3; border-left: 1px solid #334155; display: flex; flex-direction: column;
+    overflow: hidden; background: #1a2a1a;
+  }
+  .saved-customs-header {
+    padding: 10px 12px; border-bottom: 1px solid #334155; flex-shrink: 0;
+  }
+  .saved-customs-header h3 { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #4ade80; }
+  .saved-customs-scroll { flex: 1; overflow-y: auto; padding: 4px 6px; }
+  .saved-custom-btn {
+    display: block; width: 100%; text-align: left; padding: 7px 10px; margin-bottom: 4px;
+    background: #273a27; border: 1px solid #334d33; border-radius: 6px;
+    color: #e2e8f0; font-size: 11px; cursor: pointer; transition: all 0.12s;
+  }
+  .saved-custom-btn:hover { background: #2d4a2d; border-color: #4ade80; }
+  .saved-custom-name { font-weight: 600; color: #f1f5f9; display: block; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .saved-custom-macros { font-size: 10px; color: #94a3b8; }
+  .saved-custom-macros span { margin-right: 4px; }
+  .saved-custom-del {
+    float: right; background: none; border: none; color: #475569; cursor: pointer;
+    font-size: 13px; padding: 0 2px; line-height: 1; transition: color 0.15s;
+  }
+  .saved-custom-del:hover { color: #f87171; }
+  .saved-customs-empty { text-align: center; padding: 20px 8px; color: #475569; font-size: 11px; line-height: 1.4; }
 
   /* BOTTOM PANE — Macro Preview + Save */
   .bottom-pane {
@@ -509,6 +539,7 @@ let state = {
   profile: { sex: null, height: null, weight: null, age: null, goal: null, activity: null, lowCarb: false, lcDeficit: null, lcProtein: null, lcCarbs: null },
   custom: { name: '', cal: '', pro: '', carb: '', fat: '' },
   customGrams: null,
+  savedCustoms: [],  // [{ name, macros: {cal,pro,carb,fat}, ts }]
   history: {},       // { "2026-02-26": { items: [...], targets: {cal,pro,carb,fat}|null } }
   viewMode: 'today'  // 'today' | 'history'
 };
@@ -580,7 +611,7 @@ const ageOptions = [20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80];
 function saveState() {
   try {
     snapshotTargets();
-    const toSave = { dailyItems: state.dailyItems, profile: state.profile, panelWidth: state.panelWidth, history: state.history };
+    const toSave = { dailyItems: state.dailyItems, profile: state.profile, panelWidth: state.panelWidth, history: state.history, savedCustoms: state.savedCustoms };
     localStorage.setItem('macroTrackerState', JSON.stringify(toSave));
   } catch(e) {}
 }
@@ -594,6 +625,7 @@ function loadState() {
     if (parsed.profile) state.profile = parsed.profile;
     if (parsed.panelWidth) state.panelWidth = parsed.panelWidth;
     if (parsed.history) state.history = parsed.history;
+    if (parsed.savedCustoms) state.savedCustoms = parsed.savedCustoms;
     // Migrate old deficit keys
     const deficitMigration = { slow: 'd500', moderate: 'd750', aggressive: 'd1000' };
     if (state.profile.lcDeficit && deficitMigration[state.profile.lcDeficit]) {
@@ -1088,28 +1120,49 @@ function render() {
           </div>
         </div>
 
-        <!-- Amounts -->
-        <div class="amount-panel">
-          ${sel ? `
-            <div class="amount-header">
-              <h3>Select Amount</h3>
-              <div class="sel-name">${sel.name}</div>
-            </div>
-            <div class="custom-grams-row">
-              <label>Custom</label>
-              <input type="number" class="custom-grams-input" id="customGramsInput" placeholder="g" min="1" value="${state.customGrams || ''}" />
-              <span class="custom-grams-preview" id="customGramsPreview">${state.customGrams ? (() => { const m = calcMacros(sel, state.customGrams); return m.cal + ' cal, ' + m.pro + 'p, ' + m.carb + 'c, ' + m.fat + 'f'; })() : ''}</span>
-              <button class="custom-add-btn" id="customGramsUse" ${!state.customGrams ? 'disabled' : ''} style="font-size:11px;padding:4px 10px;">Use</button>
-            </div>
-            <div class="amount-scroll">
-              ${sel.amounts.map((a, i) => `
-                <button class="amount-btn${amt && amt === a ? ' active' : ''}" data-amt="${i}">
-                  <span class="amt-label">${a.label}</span>
-                  <span class="amt-grams">${a.g}g</span>
+        <!-- Amounts + Saved Customs -->
+        <div class="amount-wrapper">
+          <div class="amount-panel">
+            ${sel ? `
+              <div class="amount-header">
+                <h3>Select Amount</h3>
+                <div class="sel-name">${sel.name}</div>
+              </div>
+              <div class="custom-grams-row">
+                <label>Custom</label>
+                <input type="number" class="custom-grams-input" id="customGramsInput" placeholder="g" min="1" value="${state.customGrams || ''}" />
+                <span class="custom-grams-preview" id="customGramsPreview">${state.customGrams ? (() => { const m = calcMacros(sel, state.customGrams); return m.cal + ' cal, ' + m.pro + 'p, ' + m.carb + 'c, ' + m.fat + 'f'; })() : ''}</span>
+                <button class="custom-add-btn" id="customGramsUse" ${!state.customGrams ? 'disabled' : ''} style="font-size:11px;padding:4px 10px;">Use</button>
+              </div>
+              <div class="amount-scroll">
+                ${sel.amounts.map((a, i) => `
+                  <button class="amount-btn${amt && amt === a ? ' active' : ''}" data-amt="${i}">
+                    <span class="amt-label">${a.label}</span>
+                    <span class="amt-grams">${a.g}g</span>
+                  </button>
+                `).join('')}
+              </div>
+            ` : `<div class="no-selection">&#8592; Select an ingredient</div>`}
+          </div>
+          <div class="saved-customs-panel">
+            <div class="saved-customs-header"><h3>Saved Customs</h3></div>
+            <div class="saved-customs-scroll">
+              ${state.savedCustoms.length === 0 ? `
+                <div class="saved-customs-empty">Custom items you add will appear here for quick re-use.</div>
+              ` : state.savedCustoms.map((sc, i) => `
+                <button class="saved-custom-btn" data-savedcustom="${i}">
+                  <span class="saved-custom-del" data-delsaved="${i}">&times;</span>
+                  <span class="saved-custom-name">${sc.name}</span>
+                  <span class="saved-custom-macros">
+                    <span class="macro-cal">${sc.macros.cal}</span>
+                    <span class="macro-pro">${sc.macros.pro}p</span>
+                    <span class="macro-carb">${sc.macros.carb}c</span>
+                    <span class="macro-fat">${sc.macros.fat}f</span>
+                  </span>
                 </button>
               `).join('')}
             </div>
-          ` : `<div class="no-selection">&#8592; Select an ingredient</div>`}
+          </div>
         </div>
       </div>
 
@@ -1226,6 +1279,36 @@ function bindEvents() {
     });
   });
 
+  // Saved custom buttons — click to add to daily tracker
+  document.querySelectorAll('.saved-custom-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      // Don't add if they clicked the delete button
+      if (e.target.classList.contains('saved-custom-del')) return;
+      const idx = parseInt(btn.dataset.savedcustom);
+      const sc = state.savedCustoms[idx];
+      if (!sc) return;
+      state.dailyItems.push({
+        name: sc.name,
+        amountLabel: 'saved custom',
+        grams: 0,
+        macros: { ...sc.macros },
+        ts: Date.now(),
+        date: todayKey()
+      });
+      render();
+    });
+  });
+
+  // Saved custom delete buttons
+  document.querySelectorAll('.saved-custom-del').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const idx = parseInt(btn.dataset.delsaved);
+      state.savedCustoms.splice(idx, 1);
+      render();
+    });
+  });
+
   // Custom grams input — live preview without re-render
   const customGramsInput = document.getElementById('customGramsInput');
   if (customGramsInput) {
@@ -1322,19 +1405,29 @@ function bindEvents() {
     customSaveBtn.addEventListener('click', () => {
       if (!state.custom.cal) return;
       const label = state.custom.name.trim() || 'Custom Item';
+      const macros = {
+        cal: parseInt(state.custom.cal) || 0,
+        pro: parseInt(state.custom.pro) || 0,
+        carb: parseInt(state.custom.carb) || 0,
+        fat: parseInt(state.custom.fat) || 0
+      };
       state.dailyItems.push({
         name: label,
         amountLabel: 'manual',
         grams: 0,
-        macros: {
-          cal: parseInt(state.custom.cal) || 0,
-          pro: parseInt(state.custom.pro) || 0,
-          carb: parseInt(state.custom.carb) || 0,
-          fat: parseInt(state.custom.fat) || 0
-        },
+        macros: macros,
         ts: Date.now(),
         date: todayKey()
       });
+      // Save to recent customs (update if same name exists, otherwise prepend)
+      const existIdx = state.savedCustoms.findIndex(s => s.name.toLowerCase() === label.toLowerCase());
+      if (existIdx >= 0) {
+        state.savedCustoms[existIdx] = { name: label, macros: macros, ts: Date.now() };
+      } else {
+        state.savedCustoms.unshift({ name: label, macros: macros, ts: Date.now() });
+      }
+      // Keep max 50 saved customs
+      if (state.savedCustoms.length > 50) state.savedCustoms = state.savedCustoms.slice(0, 50);
       state.custom = { name: '', cal: '', pro: '', carb: '', fat: '' };
       render();
     });
@@ -1402,6 +1495,7 @@ function bindEvents() {
         history: state.history,
         dailyItems: state.dailyItems,
         profile: state.profile,
+        savedCustoms: state.savedCustoms,
         exportDate: new Date().toISOString()
       };
       const json = JSON.stringify(data, null, 2);
@@ -1461,6 +1555,16 @@ function bindEvents() {
         }
         if (data.profile && !state.profile.sex && data.profile.sex) {
           state.profile = data.profile;
+        }
+        // Merge saved customs
+        if (data.savedCustoms) {
+          const existingNames = new Set(state.savedCustoms.map(s => s.name.toLowerCase()));
+          data.savedCustoms.forEach(sc => {
+            if (!existingNames.has(sc.name.toLowerCase())) {
+              state.savedCustoms.push(sc);
+              existingNames.add(sc.name.toLowerCase());
+            }
+          });
         }
         alert('Import successful! ' + Object.keys(data.history || {}).length + ' days imported.');
         render();
