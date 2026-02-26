@@ -219,31 +219,46 @@
   .lc-active h3 { color: #f59e0b !important; }
   .lc-detail { font-size: 11px; color: #94a3b8; margin-top: 4px; }
 
-  /* CUSTOM MACRO ENTRY */
+  /* CUSTOM MACRO ENTRY — compact inline */
   .custom-entry-pane {
-    border-bottom: 2px solid #334155; padding: 14px 20px; flex-shrink: 0; background: #1a2a1a;
+    border-bottom: 2px solid #334155; padding: 10px 20px; flex-shrink: 0; background: #1a2a1a;
   }
-  .custom-entry-pane h3 {
-    font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #4ade80; margin-bottom: 10px;
+  .custom-row-header {
+    font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #4ade80;
+    margin-bottom: 8px; font-weight: 700;
   }
-  .custom-save-row {
-    display: flex; align-items: center; gap: 14px; margin-top: 12px; padding-top: 10px;
-    border-top: 1px solid #334155;
+  .custom-inline {
+    display: flex; gap: 6px; align-items: flex-end; flex-wrap: wrap;
   }
-  .custom-summary {
-    font-size: 13px; color: #94a3b8; font-weight: 600;
-  }
+  .custom-field-group { display: flex; flex-direction: column; gap: 2px; }
+  .custom-field-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b; text-align: center; }
   .custom-input {
-    padding: 7px 10px; border-radius: 6px; border: 1px solid #475569;
-    background: #0f172a; color: #e2e8f0; font-size: 13px; outline: none;
-    transition: border-color 0.15s; width: 80px; text-align: center;
+    padding: 6px 8px; border-radius: 6px; border: 1px solid #475569;
+    background: #0f172a; color: #e2e8f0; font-size: 12px; outline: none;
+    transition: border-color 0.15s; width: 64px; text-align: center;
   }
   .custom-input:focus { border-color: #4ade80; }
   .custom-input::placeholder { color: #475569; }
-  .custom-input.name-input { width: 200px; text-align: left; }
-  .custom-fields { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-  .custom-field-group { display: flex; flex-direction: column; align-items: center; gap: 3px; }
-  .custom-field-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px; color: #64748b; }
+  .custom-input.name-input { width: 150px; text-align: left; }
+  .custom-add-btn {
+    padding: 6px 14px; background: #166534; color: #4ade80; border: 1px solid #22c55e;
+    border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer;
+    transition: all 0.15s; white-space: nowrap;
+  }
+  .custom-add-btn:hover { background: #15803d; color: #fff; }
+  .custom-add-btn:disabled { background: #1e293b; color: #475569; border-color: #334155; cursor: default; }
+
+  /* REMAINING MACROS */
+  .daily-remaining {
+    border-top: 1px solid #334155; padding: 10px 20px; flex-shrink: 0; background: #0f1a2e;
+  }
+  .daily-remaining h3 { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #475569; margin-bottom: 8px; }
+  .remaining-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .remain-box { border-radius: 6px; padding: 6px 8px; text-align: center; }
+  .remain-box .remain-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 1px; }
+  .remain-box .remain-value { font-size: 18px; font-weight: 700; }
+  .remain-over { opacity: 0.5; }
+  .remain-over .remain-value { text-decoration: line-through; }
 
   .preview-label {
     font-size: 12px; color: #64748b; margin-bottom: 12px; text-align: center;
@@ -568,6 +583,11 @@ function getTotals() {
   }, { cal: 0, pro: 0, carb: 0, fat: 0 });
 }
 
+function getActiveTargets() {
+  if (state.profile.lowCarb) return calcLowCarbTargets();
+  return calcDailyTargets();
+}
+
 function getFilteredIngredients() {
   if (!state.searchQuery) return ingredients;
   const q = state.searchQuery.toLowerCase();
@@ -696,6 +716,7 @@ function render() {
   const app = document.getElementById('app');
   const filtered = getFilteredIngredients();
   const totals = getTotals();
+  const targets = getActiveTargets();
   const sel = state.selectedIngredient;
   const amt = state.selectedAmount;
   let preview = null;
@@ -754,6 +775,37 @@ function render() {
           </div>
         </div>
       </div>
+      ${targets ? `
+      <div class="daily-remaining">
+        <h3>Remaining</h3>
+        <div class="remaining-grid">
+          ${(() => {
+            const rCal = targets.cal - totals.cal;
+            const rPro = Math.round((targets.pro - totals.pro) * 10) / 10;
+            const rCarb = Math.round((targets.carb - totals.carb) * 10) / 10;
+            const rFat = Math.round((targets.fat - totals.fat) * 10) / 10;
+            return `
+              <div class="remain-box total-cal${rCal < 0 ? ' remain-over' : ''}">
+                <div class="remain-label" style="color:#fdba74">Calories</div>
+                <div class="remain-value" style="color:#fb923c">${rCal}</div>
+              </div>
+              <div class="remain-box total-pro${rPro < 0 ? ' remain-over' : ''}">
+                <div class="remain-label" style="color:#86efac">Protein</div>
+                <div class="remain-value" style="color:#4ade80">${rPro}g</div>
+              </div>
+              <div class="remain-box total-carb${rCarb < 0 ? ' remain-over' : ''}">
+                <div class="remain-label" style="color:#c4b5fd">Carbs</div>
+                <div class="remain-value" style="color:#a78bfa">${rCarb}g</div>
+              </div>
+              <div class="remain-box total-fat${rFat < 0 ? ' remain-over' : ''}">
+                <div class="remain-label" style="color:#fda4af">Fat</div>
+                <div class="remain-value" style="color:#fb7185">${rFat}g</div>
+              </div>
+            `;
+          })()}
+        </div>
+      </div>
+      ` : ''}
     </div>
 
     <!-- RIGHT PANEL -->
@@ -830,36 +882,31 @@ function render() {
         `}
       </div>
 
-      <!-- CUSTOM MACRO ENTRY -->
+      <!-- CUSTOM MACRO ENTRY — compact inline -->
       <div class="custom-entry-pane">
-        <h3>Quick Add Custom Item</h3>
-        <div class="custom-fields" style="margin-bottom:10px;">
+        <div class="custom-row-header">Quick Add Custom Item</div>
+        <div class="custom-inline">
           <div class="custom-field-group">
             <span class="custom-field-label">Name</span>
-            <input type="text" class="custom-input name-input" id="customName" placeholder="e.g. Protein shake" value="${state.custom.name}" />
+            <input type="text" class="custom-input name-input" id="customName" placeholder="Item name" value="${state.custom.name}" />
           </div>
-        </div>
-        <div class="custom-fields">
           <div class="custom-field-group">
-            <span class="custom-field-label" style="color:#fb923c;">Calories</span>
+            <span class="custom-field-label" style="color:#fb923c;">Cal</span>
             <input type="number" class="custom-input" id="customCal" placeholder="0" value="${state.custom.cal}" min="0" />
           </div>
           <div class="custom-field-group">
-            <span class="custom-field-label" style="color:#4ade80;">Protein (g)</span>
+            <span class="custom-field-label" style="color:#4ade80;">Pro</span>
             <input type="number" class="custom-input" id="customPro" placeholder="0" value="${state.custom.pro}" min="0" />
           </div>
           <div class="custom-field-group">
-            <span class="custom-field-label" style="color:#a78bfa;">Carbs (g)</span>
+            <span class="custom-field-label" style="color:#a78bfa;">Carb</span>
             <input type="number" class="custom-input" id="customCarb" placeholder="0" value="${state.custom.carb}" min="0" />
           </div>
           <div class="custom-field-group">
-            <span class="custom-field-label" style="color:#fb7185;">Fat (g)</span>
+            <span class="custom-field-label" style="color:#fb7185;">Fat</span>
             <input type="number" class="custom-input" id="customFat" placeholder="0" value="${state.custom.fat}" min="0" />
           </div>
-        </div>
-        <div class="custom-save-row">
-          <button class="save-btn" id="customSaveBtn" ${!state.custom.cal ? 'disabled' : ''}>Add Custom to Tracker</button>
-          ${state.custom.cal ? `<span class="custom-summary">${state.custom.cal} cal, ${state.custom.pro || 0}p, ${state.custom.carb || 0}c, ${state.custom.fat || 0}f</span>` : ''}
+          <button class="custom-add-btn" id="customSaveBtn" ${!state.custom.cal ? 'disabled' : ''}>+ Add</button>
         </div>
       </div>
 
