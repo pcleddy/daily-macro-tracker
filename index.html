@@ -748,19 +748,27 @@ const mealDB = [
 // Score a meal against remaining macros (lower = better fit)
 function scoreMeal(meal, remaining) {
   if (remaining.cal <= 0) return 99999;
-  // Penalize if meal exceeds remaining calories
   const calOver = Math.max(0, meal.cal - remaining.cal);
-  const calFit = Math.abs(meal.cal - remaining.cal * 0.6); // prefer ~60% of remaining
+  const carbOver = Math.max(0, meal.carb - (remaining.carb > 0 ? remaining.carb : 999));
+  const calFit = Math.abs(meal.cal - remaining.cal * 0.6);
   const proFit = Math.abs(meal.pro - (remaining.pro > 0 ? remaining.pro * 0.5 : 0));
-  return calOver * 3 + calFit + proFit;
+  // In low-carb mode, heavily penalize carb overages
+  const carbPenalty = state.profile.lowCarb ? carbOver * 5 : carbOver;
+  return calOver * 3 + carbPenalty + calFit + proFit;
 }
 
 function getMatchedMeals(remaining, type) {
+  var isLC = state.profile.lowCarb;
   return mealDB
-    .filter(m => m.type === type && m.cal <= remaining.cal + 50)
-    .map(m => ({ ...m, score: scoreMeal(m, remaining) }))
-    .sort((a, b) => a.score - b.score)
-;
+    .filter(function(m) {
+      if (m.type !== type) return false;
+      if (m.cal > remaining.cal + 50) return false;
+      // In low-carb mode, exclude meals exceeding remaining carbs + small buffer
+      if (isLC && remaining.carb > 0 && m.carb > remaining.carb + 10) return false;
+      return true;
+    })
+    .map(function(m) { return Object.assign({}, m, { score: scoreMeal(m, remaining) }); })
+    .sort(function(a, b) { return a.score - b.score; });
 }
 
 // ============================================================
