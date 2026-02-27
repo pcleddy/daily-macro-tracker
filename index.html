@@ -358,7 +358,7 @@
 
   /* REMAINING MACROS */
   .daily-remaining {
-    border-top: 1px solid #334155; padding: 10px 20px; flex-shrink: 0; background: #0f1a2e;
+    border-bottom: 1px solid #334155; padding: 10px 20px; flex-shrink: 0; background: #0f1a2e;
   }
   .daily-remaining h3 { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #475569; margin-bottom: 8px; }
   .remaining-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
@@ -368,6 +368,41 @@
   .remain-pct { font-size: 12px; font-weight: 500; opacity: 0.7; }
   .remain-over { opacity: 0.5; }
   .remain-over .remain-value { text-decoration: line-through; }
+
+  /* RECIPE POPUP */
+  .recipe-popup {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+    background: #1e293b; border-top: 2px solid #f59e0b; padding: 14px 20px;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.5); max-height: 180px; overflow-y: auto;
+    animation: slideUp 0.2s ease-out;
+  }
+  @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  .recipe-popup-header {
+    display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;
+  }
+  .recipe-popup-title { font-size: 14px; font-weight: 700; color: #fbbf24; }
+  .recipe-popup-close {
+    background: none; border: none; color: #94a3b8; font-size: 18px; cursor: pointer; padding: 0 4px;
+  }
+  .recipe-popup-close:hover { color: #f87171; }
+  .recipe-popup-macros { font-size: 11px; margin-bottom: 8px; display: flex; gap: 8px; }
+  .recipe-popup-macros span { padding: 2px 6px; border-radius: 4px; font-weight: 600; }
+  .recipe-ingredients { font-size: 12px; color: #cbd5e1; margin-bottom: 6px; }
+  .recipe-ingredients strong { color: #fbbf24; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .recipe-prep { font-size: 12px; color: #94a3b8; font-style: italic; }
+  .recipe-prep strong { color: #fbbf24; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; font-style: normal; }
+  .daily-item.has-recipe { cursor: pointer; }
+  .daily-item.has-recipe:hover { background: #334155; }
+
+  /* FLASH ANIMATION for exceeded limits */
+  @keyframes flashWarn {
+    0% { background: inherit; }
+    25% { background: #7f1d1d; }
+    50% { background: inherit; }
+    75% { background: #7f1d1d; }
+    100% { background: inherit; }
+  }
+  .flash-warn { animation: flashWarn 0.8s ease-out; }
 
   /* HISTORY VIEW */
   .history-toggle-btn {
@@ -652,61 +687,61 @@ const mealDB = [
 
   // ======================== MEALS ========================
   // Lighter (lunch-friendly)
-  { name:"Egg Omelette (3) + Toast", type:"meal", tags:"breakfast egg american vegetarian", cal:380, pro:24, carb:26, fat:20 },
-  { name:"Grilled Chicken Salad + Dressing", type:"meal", tags:"lunch chicken poultry salad low-carb healthy", cal:390, pro:38, carb:14, fat:20 },
-  { name:"Tuna Salad Sandwich", type:"meal", tags:"lunch fish tuna seafood sandwich", cal:400, pro:30, carb:34, fat:14 },
-  { name:"Turkey Burger + Side Salad", type:"meal", tags:"lunch dinner turkey poultry american burger salad", cal:420, pro:32, carb:28, fat:18 },
-  { name:"Shrimp + Zucchini Noodles", type:"meal", tags:"lunch dinner shrimp seafood fish low-carb keto italian", cal:310, pro:30, carb:12, fat:14 },
-  { name:"Greek Chicken Bowl (no rice)", type:"meal", tags:"lunch chicken poultry greek mediterranean bowl low-carb", cal:380, pro:36, carb:16, fat:18 },
-  { name:"Soup & Sandwich (turkey + broth)", type:"meal", tags:"lunch turkey poultry sandwich soup comfort", cal:400, pro:28, carb:38, fat:12 },
-  { name:"Loaded Salad (chicken, egg, cheese, ranch)", type:"meal", tags:"lunch chicken poultry egg cheese salad american low-carb", cal:440, pro:34, carb:10, fat:30 },
+  { name:"Egg Omelette (3) + Toast", type:"meal", tags:"breakfast egg american vegetarian", cal:380, pro:24, carb:26, fat:20, recipe:"3 eggs, 1 tbsp butter, salt & pepper, 2 slices bread | Whisk eggs, cook in buttered pan 2-3 min per side. Toast bread." },
+  { name:"Grilled Chicken Salad + Dressing", type:"meal", tags:"lunch chicken poultry salad low-carb healthy", cal:390, pro:38, carb:14, fat:20, recipe:"6 oz grilled chicken, mixed greens, tomato, cucumber, 2 tbsp olive oil dressing | Grill chicken, toss with greens and veggies." },
+  { name:"Tuna Salad Sandwich", type:"meal", tags:"lunch fish tuna seafood sandwich", cal:400, pro:30, carb:34, fat:14, recipe:"5 oz canned tuna, 1 tbsp mayo, celery, 2 slices bread | Mix tuna with mayo & celery, spread on bread." },
+  { name:"Turkey Burger + Side Salad", type:"meal", tags:"lunch dinner turkey poultry american burger salad", cal:420, pro:32, carb:28, fat:18, recipe:"5 oz turkey patty, whole wheat bun, lettuce, tomato, 1 tbsp mayo, side salad | Grill turkey patty, assemble burger, serve with greens." },
+  { name:"Shrimp + Zucchini Noodles", type:"meal", tags:"lunch dinner shrimp seafood fish low-carb keto italian", cal:310, pro:30, carb:12, fat:14, recipe:"7 oz shrimp, 2 cups zucchini noodles, 1 tbsp olive oil, garlic, lemon | Sauté shrimp 2 min, toss with zucchini noodles and garlic." },
+  { name:"Greek Chicken Bowl (no rice)", type:"meal", tags:"lunch chicken poultry greek mediterranean bowl low-carb", cal:380, pro:36, carb:16, fat:18, recipe:"6 oz grilled chicken, cucumber, tomato, feta, olives, 2 tbsp olive oil dressing | Grill chicken, combine with veggies and feta." },
+  { name:"Soup & Sandwich (turkey + broth)", type:"meal", tags:"lunch turkey poultry sandwich soup comfort", cal:400, pro:28, carb:38, fat:12, recipe:"2 cups turkey broth, 3 oz turkey, veggies (carrot, celery), 1 slice bread | Simmer turkey in broth with veggies 10 min, serve with bread." },
+  { name:"Loaded Salad (chicken, egg, cheese, ranch)", type:"meal", tags:"lunch chicken poultry egg cheese salad american low-carb", cal:440, pro:34, carb:10, fat:30, recipe:"5 oz grilled chicken, 2 hard-boiled eggs, mixed greens, ¼ cup cheddar, 2 tbsp ranch | Toss greens, top with chicken, eggs, cheese, ranch." },
 
   // Standard (lunch or dinner)
-  { name:"Chicken Breast + Rice + Broccoli", type:"meal", tags:"lunch dinner chicken poultry meal-prep healthy protein", cal:480, pro:42, carb:50, fat:8 },
-  { name:"Salmon + Sweet Potato + Greens", type:"meal", tags:"dinner salmon fish seafood healthy", cal:520, pro:36, carb:42, fat:18 },
-  { name:"Chicken Stir-Fry + Rice", type:"meal", tags:"lunch dinner chicken poultry chinese asian stir-fry", cal:470, pro:35, carb:52, fat:12 },
-  { name:"Bean & Cheese Burrito", type:"meal", tags:"lunch dinner beans cheese vegetarian mexican burrito", cal:480, pro:22, carb:55, fat:18 },
-  { name:"Pasta + Meat Sauce", type:"meal", tags:"dinner beef italian pasta", cal:550, pro:28, carb:65, fat:16 },
-  { name:"Steak + Potato + Green Beans", type:"meal", tags:"dinner beef steak american steakhouse", cal:560, pro:44, carb:38, fat:20 },
-  { name:"Pork Chop + Mashed Potatoes + Corn", type:"meal", tags:"dinner pork american comfort southern", cal:540, pro:38, carb:45, fat:22 },
-  { name:"Fish Tacos (2) + Slaw", type:"meal", tags:"lunch dinner fish seafood mexican tacos", cal:460, pro:28, carb:40, fat:20 },
-  { name:"Chicken Fajitas + Tortilla", type:"meal", tags:"dinner chicken poultry mexican fajitas tex-mex", cal:480, pro:34, carb:38, fat:18 },
-  { name:"Teriyaki Salmon + Brown Rice", type:"meal", tags:"dinner salmon fish seafood japanese asian", cal:510, pro:34, carb:52, fat:14 },
-  { name:"Turkey Meatballs + Pasta", type:"meal", tags:"dinner turkey poultry italian pasta", cal:490, pro:30, carb:55, fat:14 },
-  { name:"BBQ Chicken + Coleslaw + Cornbread", type:"meal", tags:"dinner chicken poultry american bbq southern", cal:560, pro:36, carb:50, fat:20 },
+  { name:"Chicken Breast + Rice + Broccoli", type:"meal", tags:"lunch dinner chicken poultry meal-prep healthy protein", cal:480, pro:42, carb:50, fat:8, recipe:"7 oz grilled chicken breast, 1 cup cooked white rice, 2 cups broccoli, ½ tsp oil | Grill chicken, steam broccoli, serve with rice." },
+  { name:"Salmon + Sweet Potato + Greens", type:"meal", tags:"dinner salmon fish seafood healthy", cal:520, pro:36, carb:42, fat:18, recipe:"6 oz salmon fillet, 1 medium sweet potato, 2 cups green salad, 1 tbsp olive oil | Bake salmon 12 min, roast potato 30 min, toss greens." },
+  { name:"Chicken Stir-Fry + Rice", type:"meal", tags:"lunch dinner chicken poultry chinese asian stir-fry", cal:470, pro:35, carb:52, fat:12, recipe:"6 oz chicken, 1.5 cups stir-fry veggies (pepper, broccoli, snap peas), 1 cup rice, 1 tbsp soy-oil sauce | Stir-fry chicken & veggies 5 min, serve with rice." },
+  { name:"Bean & Cheese Burrito", type:"meal", tags:"lunch dinner beans cheese vegetarian mexican burrito", cal:480, pro:22, carb:55, fat:18, recipe:"½ cup black beans, ¼ cup cheddar, 1 large tortilla, salsa, lettuce | Warm beans, fill tortilla with beans, cheese, salsa, roll tight." },
+  { name:"Pasta + Meat Sauce", type:"meal", tags:"dinner beef italian pasta", cal:550, pro:28, carb:65, fat:16, recipe:"6 oz lean ground beef, 2 cups pasta, ½ cup marinara, garlic, basil | Brown beef, simmer with sauce, serve over cooked pasta." },
+  { name:"Steak + Potato + Green Beans", type:"meal", tags:"dinner beef steak american steakhouse", cal:560, pro:44, carb:38, fat:20, recipe:"8 oz lean steak, 1 medium potato, 2 cups green beans, 1 tbsp oil | Grill steak 4 min per side, roast potato, sauté beans." },
+  { name:"Pork Chop + Mashed Potatoes + Corn", type:"meal", tags:"dinner pork american comfort southern", cal:540, pro:38, carb:45, fat:22, recipe:"6 oz pork chop, 1 cup mashed potatoes (w/ 1 tbsp butter), 1 cup corn | Pan-sear pork, boil & mash potatoes, simmer corn." },
+  { name:"Fish Tacos (2) + Slaw", type:"meal", tags:"lunch dinner fish seafood mexican tacos", cal:460, pro:28, carb:40, fat:20, recipe:"5 oz white fish, 2 small tortillas, cabbage slaw, lime, salsa, 1 tbsp mayo | Pan-fry fish, assemble tacos with slaw and toppings." },
+  { name:"Chicken Fajitas + Tortilla", type:"meal", tags:"dinner chicken poultry mexican fajitas tex-mex", cal:480, pro:34, carb:38, fat:18, recipe:"6 oz chicken, 1.5 cups peppers & onions, 2 tortillas, salsa, 1 tbsp oil | Sauté chicken & veggies, serve in warm tortillas." },
+  { name:"Teriyaki Salmon + Brown Rice", type:"meal", tags:"dinner salmon fish seafood japanese asian", cal:510, pro:34, carb:52, fat:14, recipe:"6 oz salmon, 1 cup brown rice, 2 tbsp teriyaki sauce, broccoli | Bake salmon with teriyaki glaze 12 min, serve with rice." },
+  { name:"Turkey Meatballs + Pasta", type:"meal", tags:"dinner turkey poultry italian pasta", cal:490, pro:30, carb:55, fat:14, recipe:"6 oz turkey meatballs, 2 cups pasta, ½ cup marinara, parmesan | Bake meatballs 15 min, toss with cooked pasta and sauce." },
+  { name:"BBQ Chicken + Coleslaw + Cornbread", type:"meal", tags:"dinner chicken poultry american bbq southern", cal:560, pro:36, carb:50, fat:20, recipe:"6 oz BBQ chicken, 1 cup coleslaw (w/ mayo), 1 piece cornbread | Bake chicken with BBQ sauce, serve with slaw and cornbread." },
 
   // Bigger (dinner)
-  { name:"Burger + Fries (classic)", type:"meal", tags:"lunch dinner beef american burger fast-food", cal:750, pro:32, carb:65, fat:38 },
-  { name:"Chicken Alfredo Pasta", type:"meal", tags:"dinner chicken poultry italian pasta comfort cheese", cal:680, pro:34, carb:60, fat:32 },
-  { name:"Steak Burrito Bowl + Chips", type:"meal", tags:"dinner beef steak mexican bowl tex-mex", cal:720, pro:38, carb:70, fat:28 },
-  { name:"Pizza (2 slices) + Side Salad", type:"meal", tags:"lunch dinner cheese italian pizza", cal:620, pro:24, carb:58, fat:30 },
-  { name:"Breakfast Plate (eggs, bacon, toast, hash browns)", type:"meal", tags:"breakfast egg pork bacon american diner", cal:650, pro:28, carb:48, fat:38 },
-  { name:"Spaghetti Bolognese (big bowl)", type:"meal", tags:"dinner beef italian pasta", cal:680, pro:34, carb:72, fat:22 },
+  { name:"Burger + Fries (classic)", type:"meal", tags:"lunch dinner beef american burger fast-food", cal:750, pro:32, carb:65, fat:38, recipe:"6 oz ground beef patty, hamburger bun, lettuce, tomato, 2 tbsp mayo, 1.5 cups fries | Pan-fry burger 3 min per side, assemble with bun and toppings, fry potatoes." },
+  { name:"Chicken Alfredo Pasta", type:"meal", tags:"dinner chicken poultry italian pasta comfort cheese", cal:680, pro:34, carb:60, fat:32, recipe:"6 oz chicken, 2.5 cups pasta, 1 cup Alfredo sauce (cream, butter, parmesan) | Cook pasta, pan-sear chicken, toss with Alfredo sauce." },
+  { name:"Steak Burrito Bowl + Chips", type:"meal", tags:"dinner beef steak mexican bowl tex-mex", cal:720, pro:38, carb:70, fat:28, recipe:"7 oz steak, 1 cup rice, black beans, peppers, cheese, salsa, 1 oz chips | Grill steak, layer with rice, beans, toppings in bowl." },
+  { name:"Pizza (2 slices) + Side Salad", type:"meal", tags:"lunch dinner cheese italian pizza", cal:620, pro:24, carb:58, fat:30, recipe:"2 pizza slices (pepperoni or cheese), mixed greens, 1 tbsp olive oil dressing | Reheat pizza, toss greens with dressing." },
+  { name:"Breakfast Plate (eggs, bacon, toast, hash browns)", type:"meal", tags:"breakfast egg pork bacon american diner", cal:650, pro:28, carb:48, fat:38, recipe:"3 eggs, 4 slices bacon, 2 slices toast (w/ butter), 1.5 cups hash browns | Fry eggs, cook bacon, toast bread, cook hash browns." },
+  { name:"Spaghetti Bolognese (big bowl)", type:"meal", tags:"dinner beef italian pasta", cal:680, pro:34, carb:72, fat:22, recipe:"7 oz ground beef, 3 cups spaghetti, 1 cup marinara, garlic, onion | Brown beef with garlic & onion, simmer with sauce, serve over pasta." },
 
   // Thai
-  { name:"Pad Thai (shrimp)", type:"meal", tags:"lunch dinner shrimp seafood thai asian noodles", cal:510, pro:24, carb:58, fat:18 },
-  { name:"Thai Green Curry + Rice", type:"meal", tags:"dinner chicken poultry thai asian curry", cal:550, pro:22, carb:52, fat:26 },
-  { name:"Thai Basil Chicken + Rice", type:"meal", tags:"lunch dinner chicken poultry thai asian stir-fry", cal:480, pro:32, carb:50, fat:14 },
-  { name:"Tom Yum Soup + Rice", type:"meal", tags:"lunch dinner shrimp seafood thai asian soup", cal:350, pro:20, carb:40, fat:10 },
+  { name:"Pad Thai (shrimp)", type:"meal", tags:"lunch dinner shrimp seafood thai asian noodles", cal:510, pro:24, carb:58, fat:18, recipe:"6 oz shrimp, 2 cups rice noodles, 2 tbsp fish sauce-lime-oil, egg, bean sprouts, peanuts | Stir-fry shrimp, add noodles & sauce, toss with egg & sprouts." },
+  { name:"Thai Green Curry + Rice", type:"meal", tags:"dinner chicken poultry thai asian curry", cal:550, pro:22, carb:52, fat:26, recipe:"5 oz chicken, 1 cup coconut milk, 2 tbsp green curry paste, 1 cup rice, veggies | Simmer curry paste in coconut milk with chicken 10 min, serve with rice." },
+  { name:"Thai Basil Chicken + Rice", type:"meal", tags:"lunch dinner chicken poultry thai asian stir-fry", cal:480, pro:32, carb:50, fat:14, recipe:"6 oz chicken, fresh basil, 1 cup rice, garlic, chili, 1 tbsp oil | Stir-fry chicken with garlic, basil, chili 5 min, serve with rice." },
+  { name:"Tom Yum Soup + Rice", type:"meal", tags:"lunch dinner shrimp seafood thai asian soup", cal:350, pro:20, carb:40, fat:10, recipe:"5 oz shrimp, 3 cups broth, lemongrass, lime, chili, 1 cup rice | Simmer broth with lemongrass & chili 5 min, add shrimp 2 min, serve with rice." },
 
   // Indian
-  { name:"Chicken Tikka Masala + Rice", type:"meal", tags:"dinner chicken poultry indian curry", cal:580, pro:34, carb:52, fat:22 },
-  { name:"Dal + Naan Bread", type:"meal", tags:"lunch dinner vegetarian vegan lentils beans indian", cal:420, pro:16, carb:58, fat:12 },
-  { name:"Butter Chicken + Rice", type:"meal", tags:"dinner chicken poultry indian curry", cal:620, pro:32, carb:50, fat:28 },
+  { name:"Chicken Tikka Masala + Rice", type:"meal", tags:"dinner chicken poultry indian curry", cal:580, pro:34, carb:52, fat:22, recipe:"6 oz marinated chicken, 1 cup tomato cream sauce, 1 cup rice, ginger, garlic, spices | Grill marinated chicken, simmer with sauce 10 min, serve with rice." },
+  { name:"Dal + Naan Bread", type:"meal", tags:"lunch dinner vegetarian vegan lentils beans indian", cal:420, pro:16, carb:58, fat:12, recipe:"¾ cup cooked lentils, 2 naan breads, onion, cumin, turmeric, 1 tbsp oil | Sauté onions with spices, simmer lentils, serve with warm naan." },
+  { name:"Butter Chicken + Rice", type:"meal", tags:"dinner chicken poultry indian curry", cal:620, pro:32, carb:50, fat:28, recipe:"6 oz chicken, 1 cup butter-tomato sauce (cream, butter, spices), 1 cup rice | Cook chicken, simmer in butter sauce 10 min, serve with rice." },
 
   // Korean
-  { name:"Bibimbap (beef + egg)", type:"meal", tags:"lunch dinner beef egg korean asian bowl rice", cal:520, pro:28, carb:58, fat:18 },
-  { name:"Korean BBQ Beef + Rice", type:"meal", tags:"dinner beef korean asian bbq", cal:560, pro:34, carb:52, fat:20 },
+  { name:"Bibimbap (beef + egg)", type:"meal", tags:"lunch dinner beef egg korean asian bowl rice", cal:520, pro:28, carb:58, fat:18, recipe:"5 oz ground beef, 1 cup rice, 1 egg (fried), spinach, mushroom, carrot, gochujang sauce | Layer rice with cooked veggies & beef, top with fried egg & sauce." },
+  { name:"Korean BBQ Beef + Rice", type:"meal", tags:"dinner beef korean asian bbq", cal:560, pro:34, carb:52, fat:20, recipe:"7 oz thinly sliced beef, soy-sesame marinade, 1 cup rice, lettuce wraps | Marinate beef, grill or pan-sear 2 min per side, serve with rice." },
 
   // Sandwiches & Wraps
-  { name:"Club Sandwich (turkey, bacon, lettuce)", type:"meal", tags:"lunch turkey poultry pork bacon sandwich american", cal:480, pro:30, carb:36, fat:22 },
-  { name:"Chicken Caesar Wrap", type:"meal", tags:"lunch chicken poultry wrap salad", cal:440, pro:32, carb:32, fat:20 },
-  { name:"BLT Sandwich", type:"meal", tags:"lunch pork bacon sandwich american", cal:380, pro:16, carb:30, fat:22 },
-  { name:"Veggie Wrap + Hummus", type:"meal", tags:"lunch vegetarian wrap vegan mediterranean", cal:360, pro:12, carb:44, fat:16 },
+  { name:"Club Sandwich (turkey, bacon, lettuce)", type:"meal", tags:"lunch turkey poultry pork bacon sandwich american", cal:480, pro:30, carb:36, fat:22, recipe:"4 oz sliced turkey, 4 slices bacon, 3 slices bread, lettuce, tomato, 1 tbsp mayo | Layer turkey, bacon, lettuce, tomato on toasted bread with mayo." },
+  { name:"Chicken Caesar Wrap", type:"meal", tags:"lunch chicken poultry wrap salad", cal:440, pro:32, carb:32, fat:20, recipe:"5 oz grilled chicken, 1 large tortilla wrap, romaine, parmesan, 2 tbsp Caesar dressing | Grill chicken, fill wrap with greens & chicken, drizzle dressing." },
+  { name:"BLT Sandwich", type:"meal", tags:"lunch pork bacon sandwich american", cal:380, pro:16, carb:30, fat:22, recipe:"6 slices bacon, 3 slices bread, lettuce, tomato, 1 tbsp mayo | Cook bacon crispy, layer with lettuce & tomato on toasted bread." },
+  { name:"Veggie Wrap + Hummus", type:"meal", tags:"lunch vegetarian wrap vegan mediterranean", cal:360, pro:12, carb:44, fat:16, recipe:"1 large tortilla wrap, cucumber, tomato, bell pepper, spinach, 3 tbsp hummus | Spread hummus on wrap, fill with fresh veggies, roll tight." },
 
   // Breakfast
-  { name:"Pancakes (3) + Syrup + Bacon", type:"meal", tags:"breakfast pork bacon american", cal:580, pro:16, carb:72, fat:24 },
-  { name:"Açaí Bowl", type:"meal", tags:"breakfast vegetarian smoothie fruit bowl vegan", cal:380, pro:8, carb:62, fat:12 },
+  { name:"Pancakes (3) + Syrup + Bacon", type:"meal", tags:"breakfast pork bacon american", cal:580, pro:16, carb:72, fat:24, recipe:"1 cup pancake batter, 4 tbsp syrup, 6 slices bacon, 1 tbsp butter | Cook 3 pancakes in buttered pan 2 min per side, cook bacon, serve with syrup." },
+  { name:"Açaí Bowl", type:"meal", tags:"breakfast vegetarian smoothie fruit bowl vegan", cal:380, pro:8, carb:62, fat:12, recipe:"1 cup açai (or acai bowl), ½ cup granola, ½ cup mixed berries, 2 tbsp coconut | Blend acai, top with granola, berries, coconut." },
 ];
 
 
@@ -746,7 +781,9 @@ let state = {
   viewMode: 'today',  // 'today' | 'history'
   bottomTab: 'profile', // 'profile' | 'match'
   matchSearch: '',
-  matchTag: ''
+  matchTag: '',
+  recipePopup: null  // { name, cal, pro, carb, fat, recipe }
+
 };
 
 function todayKey() {
@@ -1366,54 +1403,8 @@ function render() {
         </div>
       </div>
       ` : `
-      <div class="daily-items">
-        ${state.dailyItems.length === 0 ? `
-          <div class="empty-state">
-            <div class="icon">&#127858;</div>
-            <p>No items logged yet.<br>Select an ingredient and amount to get started.</p>
-          </div>
-        ` : state.dailyItems.map((item, i) => `
-          <div class="daily-item">
-            <div>
-              <div class="item-name">${item.name}</div>
-              <div class="item-amount">${item.amountLabel} (${item.grams}g)${item.ts ? ' &bull; ' + formatTime(item.ts) : ''}</div>
-            </div>
-            <div class="item-macros">
-              <span class="macro-cal">${item.macros.cal}${targets ? `<span class="item-pct">${Math.round(item.macros.cal / targets.cal * 100)}%</span>` : ''}</span>
-              <span class="macro-pro">${item.macros.pro}p</span>
-              <span class="macro-carb">${item.macros.carb}c</span>
-              <span class="macro-fat">${item.macros.fat}f</span>
-            </div>
-            <div class="item-actions">
-              <button class="clone-btn" data-clone="${i}" title="Add another">+</button>
-              <button class="remove-btn" data-remove="${i}">&times;</button>
-            </div>
-          </div>
-        `).join('')}
-      </div>
-      <div class="daily-totals">
-        <h3>Daily Totals</h3>
-        <div class="totals-grid">
-          <div class="total-box total-cal">
-            <div class="total-label">Calories</div>
-            <div class="total-value">${totals.cal}${targets ? ` <span class="total-pct">(${Math.round(totals.cal / targets.cal * 100)}%)</span>` : ''}</div>
-          </div>
-          <div class="total-box total-pro">
-            <div class="total-label">Protein</div>
-            <div class="total-value">${Math.round(totals.pro * 10) / 10}g</div>
-          </div>
-          <div class="total-box total-carb">
-            <div class="total-label">Carbs</div>
-            <div class="total-value">${Math.round(totals.carb * 10) / 10}g</div>
-          </div>
-          <div class="total-box total-fat">
-            <div class="total-label">Fat</div>
-            <div class="total-value">${Math.round(totals.fat * 10) / 10}g</div>
-          </div>
-        </div>
-      </div>
       ${targets ? `
-      <div class="daily-remaining">
+      <div class="daily-remaining" id="remainingSection">
         <h3>Remaining</h3>
         <div class="remaining-grid">
           ${(() => {
@@ -1447,6 +1438,54 @@ function render() {
         </div>
       </div>
       ` : ''}
+      <div class="daily-items">
+        ${state.dailyItems.length === 0 ? `
+          <div class="empty-state">
+            <div class="icon">&#127858;</div>
+            <p>No items logged yet.<br>Select an ingredient and amount to get started.</p>
+          </div>
+        ` : state.dailyItems.map((item, i) => {
+          const hasRecipe = mealDB.some(m => m.recipe && m.name === item.name);
+          return `
+          <div class="daily-item${hasRecipe ? ' has-recipe' : ''}" ${hasRecipe ? 'data-recipe="' + i + '"' : ''}>
+            <div>
+              <div class="item-name">${item.name}${hasRecipe ? ' <span style="font-size:10px;opacity:0.5;">&#128213;</span>' : ''}</div>
+              <div class="item-amount">${item.amountLabel} (${item.grams}g)${item.ts ? ' &bull; ' + formatTime(item.ts) : ''}</div>
+            </div>
+            <div class="item-macros">
+              <span class="macro-cal">${item.macros.cal}${targets ? `<span class="item-pct">${Math.round(item.macros.cal / targets.cal * 100)}%</span>` : ''}</span>
+              <span class="macro-pro">${item.macros.pro}p</span>
+              <span class="macro-carb">${item.macros.carb}c</span>
+              <span class="macro-fat">${item.macros.fat}f</span>
+            </div>
+            <div class="item-actions">
+              <button class="clone-btn" data-clone="${i}" title="Add another">+</button>
+              <button class="remove-btn" data-remove="${i}">&times;</button>
+            </div>
+          </div>
+        `; }).join('')}
+      </div>
+      <div class="daily-totals">
+        <h3>Daily Totals</h3>
+        <div class="totals-grid">
+          <div class="total-box total-cal">
+            <div class="total-label">Calories</div>
+            <div class="total-value">${totals.cal}${targets ? ` <span class="total-pct">(${Math.round(totals.cal / targets.cal * 100)}%)</span>` : ''}</div>
+          </div>
+          <div class="total-box total-pro">
+            <div class="total-label">Protein</div>
+            <div class="total-value">${Math.round(totals.pro * 10) / 10}g</div>
+          </div>
+          <div class="total-box total-carb">
+            <div class="total-label">Carbs</div>
+            <div class="total-value">${Math.round(totals.carb * 10) / 10}g</div>
+          </div>
+          <div class="total-box total-fat">
+            <div class="total-label">Fat</div>
+            <div class="total-value">${Math.round(totals.fat * 10) / 10}g</div>
+          </div>
+        </div>
+      </div>
       `}
     </div>
 
@@ -1593,6 +1632,27 @@ function render() {
       ${state.bottomTab === 'match' ? renderMatchPane() : renderProfilePane()}
     </div>
     </div>
+    ${state.recipePopup ? `
+    <div class="recipe-popup" id="recipePopup">
+      <div class="recipe-popup-header">
+        <span class="recipe-popup-title">${state.recipePopup.name}</span>
+        <button class="recipe-popup-close" id="recipePopupClose">&times;</button>
+      </div>
+      <div class="recipe-popup-macros">
+        <span class="macro-cal">${state.recipePopup.cal}</span>
+        <span class="macro-pro">${state.recipePopup.pro}p</span>
+        <span class="macro-carb">${state.recipePopup.carb}c</span>
+        <span class="macro-fat">${state.recipePopup.fat}f</span>
+      </div>
+      ${(() => {
+        const parts = state.recipePopup.recipe.split(' | ');
+        const ingredients = parts[0] || '';
+        const prep = parts[1] || '';
+        return '<div class="recipe-ingredients"><strong>Ingredients: </strong>' + ingredients + '</div>' +
+               (prep ? '<div class="recipe-prep"><strong>Prep: </strong>' + prep + '</div>' : '');
+      })()}
+    </div>
+    ` : ''}
   `;
 
   // Restore scroll positions
@@ -1604,6 +1664,20 @@ function render() {
   bindEvents();
   initResize();
   saveState();
+}
+
+function flashIfExceeded() {
+  const t = getActiveTargets();
+  if (!t) return;
+  const totals = getTotals();
+  if (totals.cal > t.cal || totals.carb > t.carb) {
+    const el = document.getElementById('remainingSection');
+    if (el) {
+      el.classList.remove('flash-warn');
+      void el.offsetWidth; // reflow to restart animation
+      el.classList.add('flash-warn');
+    }
+  }
 }
 
 // ============================================================
@@ -1669,6 +1743,7 @@ function bindEvents() {
         date: todayKey()
       });
       render();
+      flashIfExceeded();
     });
   });
 
@@ -1728,6 +1803,7 @@ function bindEvents() {
       });
       state.selectedAmount = null;
       render();
+      flashIfExceeded();
     });
   }
 
@@ -1803,6 +1879,7 @@ function bindEvents() {
       if (state.savedCustoms.length > 50) state.savedCustoms = state.savedCustoms.slice(0, 50);
       state.custom = { name: '', cal: '', pro: '', carb: '', fat: '' };
       render();
+      flashIfExceeded();
     });
   }
 
@@ -1848,6 +1925,7 @@ function bindEvents() {
         date: todayKey()
       });
       render();
+      flashIfExceeded();
     });
   });
 
@@ -1859,6 +1937,25 @@ function bindEvents() {
       render();
     });
   });
+
+  // Recipe popup — click on daily item with recipe
+  document.querySelectorAll('.daily-item[data-recipe]').forEach(el => {
+    el.addEventListener('click', e => {
+      if (e.target.closest('.clone-btn') || e.target.closest('.remove-btn')) return;
+      const idx = parseInt(el.dataset.recipe);
+      const item = state.dailyItems[idx];
+      if (!item) return;
+      const meal = mealDB.find(m => m.recipe && m.name === item.name);
+      if (!meal) return;
+      state.recipePopup = { name: meal.name, cal: meal.cal, pro: meal.pro, carb: meal.carb, fat: meal.fat, recipe: meal.recipe };
+      render();
+    });
+  });
+  // Recipe popup close
+  const recipeClose = document.getElementById('recipePopupClose');
+  if (recipeClose) {
+    recipeClose.addEventListener('click', () => { state.recipePopup = null; render(); });
+  }
 
   // Match search input
   const matchSearchInput = document.getElementById('matchSearchInput');
@@ -1916,6 +2013,7 @@ function bindEvents() {
         date: todayKey()
       });
       render();
+      flashIfExceeded();
     });
   });
 
