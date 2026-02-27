@@ -46,6 +46,7 @@
   .daily-item .item-macros { display: flex; gap: 8px; font-size: 11px; }
   .daily-item .item-macros span { padding: 2px 6px; border-radius: 4px; font-weight: 600; }
   .macro-cal { background: #422006; color: #fb923c; }
+  .item-pct { font-size: 9px; opacity: 0.7; margin-left: 3px; }
   .macro-pro { background: #052e16; color: #4ade80; }
   .macro-carb { background: #1e1b4b; color: #a78bfa; }
   .macro-fat { background: #4c0519; color: #fb7185; }
@@ -65,6 +66,7 @@
   }
   .total-box .total-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 2px; }
   .total-box .total-value { font-size: 22px; font-weight: 700; }
+  .total-pct { font-size: 12px; font-weight: 500; opacity: 0.65; }
   .total-cal { background: #422006; }
   .total-cal .total-label { color: #fdba74; }
   .total-cal .total-value { color: #fb923c; }
@@ -546,6 +548,7 @@ const ingredients = [
   { id:102, name:"Green Olives", cat:"veg", per_g:{cal:1.45,pro:0.01,carb:0.037,fat:0.153}, amounts:[{label:"5 olives",g:20},{label:"10 olives",g:40},{label:"¼ cup",g:33},{label:"½ cup",g:66}] },
   { id:103, name:"Black Olives", cat:"veg", per_g:{cal:1.16,pro:0.008,carb:0.064,fat:0.108}, amounts:[{label:"5 olives",g:22},{label:"10 olives",g:44},{label:"¼ cup sliced",g:33},{label:"½ cup sliced",g:66}] },
   { id:104, name:"Corn Chips", cat:"grain", per_g:{cal:5.19,pro:0.067,carb:0.610,fat:0.274}, amounts:[{label:"1 oz (~10 chips)",g:28},{label:"small bag",g:42},{label:"2 oz",g:57},{label:"big handful",g:40}] },
+  { id:105, name:"Prunes (dried plums)", cat:"fruit", per_g:{cal:2.40,pro:0.022,carb:0.637,fat:0.004}, amounts:[{label:"1 prune",g:10},{label:"3 prunes",g:30},{label:"5 prunes",g:50},{label:"¼ cup",g:44},{label:"½ cup",g:87}] },
 ];
 
 const catLabels = {
@@ -1077,7 +1080,7 @@ function render() {
               <div class="item-amount">${item.amountLabel} (${item.grams}g)${item.ts ? ' &bull; ' + formatTime(item.ts) : ''}</div>
             </div>
             <div class="item-macros">
-              <span class="macro-cal">${item.macros.cal}</span>
+              <span class="macro-cal">${item.macros.cal}${targets ? `<span class="item-pct">${Math.round(item.macros.cal / targets.cal * 100)}%</span>` : ''}</span>
               <span class="macro-pro">${item.macros.pro}p</span>
               <span class="macro-carb">${item.macros.carb}c</span>
               <span class="macro-fat">${item.macros.fat}f</span>
@@ -1091,7 +1094,7 @@ function render() {
         <div class="totals-grid">
           <div class="total-box total-cal">
             <div class="total-label">Calories</div>
-            <div class="total-value">${totals.cal}</div>
+            <div class="total-value">${totals.cal}${targets ? ` <span class="total-pct">(${Math.round(totals.cal / targets.cal * 100)}%)</span>` : ''}</div>
           </div>
           <div class="total-box total-pro">
             <div class="total-label">Protein</div>
