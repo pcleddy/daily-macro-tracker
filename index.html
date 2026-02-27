@@ -50,10 +50,12 @@
   .macro-pro { background: #052e16; color: #4ade80; }
   .macro-carb { background: #1e1b4b; color: #a78bfa; }
   .macro-fat { background: #4c0519; color: #fb7185; }
-  .daily-item .remove-btn {
+  .daily-item .item-actions { display: flex; gap: 2px; align-items: center; flex-shrink: 0; }
+  .daily-item .clone-btn, .daily-item .remove-btn {
     background: none; border: none; color: #64748b; cursor: pointer; font-size: 16px;
     padding: 0 4px; line-height: 1; transition: color 0.15s;
   }
+  .daily-item .clone-btn:hover { color: #4ade80; }
   .daily-item .remove-btn:hover { color: #f87171; }
 
   .daily-totals {
@@ -272,6 +274,44 @@
   .mode-label-lc { color: #f59e0b; font-weight: 600; }
   .lc-active { background: #1a2010 !important; }
   .lc-active h3 { color: #f59e0b !important; }
+
+  /* Bottom tab bar */
+  .bottom-tab-bar {
+    display: flex; border-bottom: 2px solid #334155; flex-shrink: 0; background: #0f172a;
+  }
+  .bottom-tab {
+    flex: 1; padding: 8px 12px; text-align: center; font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 1px; color: #64748b;
+    background: none; border: none; cursor: pointer; transition: all 0.15s;
+    border-bottom: 2px solid transparent; margin-bottom: -2px;
+  }
+  .bottom-tab:hover { color: #94a3b8; }
+  .bottom-tab.active { color: #60a5fa; border-bottom-color: #3b82f6; }
+  .bottom-tab.tab-match.active { color: #f59e0b; border-bottom-color: #f59e0b; }
+
+  /* Meal matcher pane */
+  .match-pane {
+    padding: 14px 20px; flex-shrink: 0; background: #1a2235;
+    overflow-y: auto; max-height: 440px;
+  }
+  .match-pane h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #f59e0b; margin-bottom: 10px; }
+  .match-section { margin-bottom: 14px; }
+  .match-section-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: #94a3b8; margin-bottom: 6px; font-weight: 600; }
+  .match-card {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 12px; margin-bottom: 4px; background: #273548;
+    border: 1px solid #334155; border-radius: 6px; cursor: pointer; transition: all 0.12s;
+  }
+  .match-card:hover { background: #2d4a6a; border-color: #f59e0b; }
+  .match-card-name { font-size: 12px; font-weight: 600; color: #f1f5f9; }
+  .match-card-macros { display: flex; gap: 5px; font-size: 10px; }
+  .match-card-macros span { padding: 1px 5px; border-radius: 3px; font-weight: 600; }
+  .match-card-add {
+    background: none; border: none; color: #f59e0b; cursor: pointer;
+    font-size: 16px; font-weight: 700; padding: 0 4px; transition: color 0.15s;
+  }
+  .match-card-add:hover { color: #fbbf24; }
+  .match-empty { text-align: center; padding: 20px; color: #475569; font-size: 12px; font-style: italic; }
   .lc-detail { font-size: 11px; color: #94a3b8; margin-top: 4px; }
 
   /* CUSTOM MACRO ENTRY — compact inline */
@@ -557,6 +597,95 @@ const catLabels = {
 };
 
 // ============================================================
+// MEALS & SNACKS DATABASE for meal matcher
+// ============================================================
+const mealDB = [
+  // ======================== SNACKS ========================
+  // Light (under 150 cal)
+  { name:"Beef Jerky (1 oz)", type:"snack", cal:116, pro:9, carb:3, fat:7 },
+  { name:"Celery + Peanut Butter (1 tbsp)", type:"snack", cal:115, pro:4, carb:5, fat:9 },
+  { name:"Cucumber + Tzatziki (¼ cup)", type:"snack", cal:80, pro:3, carb:6, fat:5 },
+  { name:"Rice Cake + Almond Butter", type:"snack", cal:130, pro:3, carb:14, fat:7 },
+  { name:"Edamame (½ cup shelled)", type:"snack", cal:95, pro:9, carb:7, fat:4 },
+  { name:"Turkey Roll-Ups (4 slices + mustard)", type:"snack", cal:75, pro:12, carb:2, fat:2 },
+  { name:"String Cheese (1 stick)", type:"snack", cal:80, pro:7, carb:1, fat:5 },
+  { name:"Pickles + Olives", type:"snack", cal:45, pro:1, carb:3, fat:3 },
+
+  // Medium (150–250 cal)
+  { name:"Greek Yogurt + Berries", type:"snack", cal:180, pro:18, carb:20, fat:3 },
+  { name:"Protein Shake", type:"snack", cal:160, pro:30, carb:8, fat:2 },
+  { name:"Hard-Boiled Eggs (2)", type:"snack", cal:155, pro:13, carb:1, fat:11 },
+  { name:"Trail Mix (¼ cup)", type:"snack", cal:175, pro:5, carb:15, fat:12 },
+  { name:"Cottage Cheese + Pineapple", type:"snack", cal:180, pro:14, carb:20, fat:5 },
+  { name:"Cheese & Crackers", type:"snack", cal:220, pro:8, carb:18, fat:14 },
+  { name:"Hummus + Veggies", type:"snack", cal:150, pro:5, carb:16, fat:8 },
+  { name:"Banana + Almonds (10)", type:"snack", cal:160, pro:4, carb:27, fat:6 },
+  { name:"Dark Chocolate (2 squares) + Walnuts", type:"snack", cal:200, pro:3, carb:14, fat:15 },
+  { name:"Protein Bar", type:"snack", cal:210, pro:20, carb:22, fat:8 },
+  { name:"Avocado Toast (½ avocado)", type:"snack", cal:220, pro:5, carb:18, fat:15 },
+  { name:"Smoothie (banana + spinach + whey)", type:"snack", cal:230, pro:26, carb:30, fat:3 },
+
+  // Heavier (250+ cal)
+  { name:"Apple + Peanut Butter (2 tbsp)", type:"snack", cal:270, pro:7, carb:30, fat:16 },
+  { name:"Chips + Guacamole", type:"snack", cal:300, pro:4, carb:28, fat:20 },
+  { name:"Granola + Yogurt Parfait", type:"snack", cal:320, pro:14, carb:42, fat:12 },
+  { name:"PB&J Sandwich", type:"snack", cal:350, pro:12, carb:42, fat:16 },
+  { name:"Cheese Quesadilla (small)", type:"snack", cal:310, pro:14, carb:26, fat:18 },
+  { name:"Overnight Oats (½ cup)", type:"snack", cal:280, pro:10, carb:40, fat:9 },
+
+  // ======================== MEALS ========================
+  // Lighter meals (300–450 cal)
+  { name:"Egg Omelette (3) + Toast", type:"meal", cal:380, pro:24, carb:26, fat:20 },
+  { name:"Grilled Chicken Salad + Dressing", type:"meal", cal:390, pro:38, carb:14, fat:20 },
+  { name:"Tuna Salad Sandwich", type:"meal", cal:400, pro:30, carb:34, fat:14 },
+  { name:"Turkey Burger + Side Salad", type:"meal", cal:420, pro:32, carb:28, fat:18 },
+  { name:"Shrimp + Zucchini Noodles", type:"meal", cal:310, pro:30, carb:12, fat:14 },
+  { name:"Greek Chicken Bowl (no rice)", type:"meal", cal:380, pro:36, carb:16, fat:18 },
+  { name:"Soup & Sandwich (turkey + broth)", type:"meal", cal:400, pro:28, carb:38, fat:12 },
+  { name:"Loaded Salad (chicken, egg, cheese, ranch)", type:"meal", cal:440, pro:34, carb:10, fat:30 },
+
+  // Standard meals (450–600 cal)
+  { name:"Chicken Breast + Rice + Broccoli", type:"meal", cal:480, pro:42, carb:50, fat:8 },
+  { name:"Salmon + Sweet Potato + Greens", type:"meal", cal:520, pro:36, carb:42, fat:18 },
+  { name:"Chicken Stir-Fry + Rice", type:"meal", cal:470, pro:35, carb:52, fat:12 },
+  { name:"Bean & Cheese Burrito", type:"meal", cal:480, pro:22, carb:55, fat:18 },
+  { name:"Pasta + Meat Sauce", type:"meal", cal:550, pro:28, carb:65, fat:16 },
+  { name:"Steak + Potato + Green Beans", type:"meal", cal:560, pro:44, carb:38, fat:20 },
+  { name:"Pork Chop + Mashed Potatoes + Corn", type:"meal", cal:540, pro:38, carb:45, fat:22 },
+  { name:"Fish Tacos (2) + Slaw", type:"meal", cal:460, pro:28, carb:40, fat:20 },
+  { name:"Chicken Fajitas + Tortilla", type:"meal", cal:480, pro:34, carb:38, fat:18 },
+  { name:"Teriyaki Salmon + Brown Rice", type:"meal", cal:510, pro:34, carb:52, fat:14 },
+  { name:"Turkey Meatballs + Pasta", type:"meal", cal:490, pro:30, carb:55, fat:14 },
+  { name:"BBQ Chicken + Coleslaw + Cornbread", type:"meal", cal:560, pro:36, carb:50, fat:20 },
+
+  // Bigger meals (600+ cal)
+  { name:"Burger + Fries (classic)", type:"meal", cal:750, pro:32, carb:65, fat:38 },
+  { name:"Chicken Alfredo Pasta", type:"meal", cal:680, pro:34, carb:60, fat:32 },
+  { name:"Steak Burrito Bowl + Chips", type:"meal", cal:720, pro:38, carb:70, fat:28 },
+  { name:"Pizza (2 slices) + Side Salad", type:"meal", cal:620, pro:24, carb:58, fat:30 },
+  { name:"Breakfast Plate (eggs, bacon, toast, hash browns)", type:"meal", cal:650, pro:28, carb:48, fat:38 },
+  { name:"Spaghetti Bolognese (big bowl)", type:"meal", cal:680, pro:34, carb:72, fat:22 },
+];
+
+// Score a meal against remaining macros (lower = better fit)
+function scoreMeal(meal, remaining) {
+  if (remaining.cal <= 0) return 99999;
+  // Penalize if meal exceeds remaining calories
+  const calOver = Math.max(0, meal.cal - remaining.cal);
+  const calFit = Math.abs(meal.cal - remaining.cal * 0.6); // prefer ~60% of remaining
+  const proFit = Math.abs(meal.pro - (remaining.pro > 0 ? remaining.pro * 0.5 : 0));
+  return calOver * 3 + calFit + proFit;
+}
+
+function getMatchedMeals(remaining, type) {
+  return mealDB
+    .filter(m => m.type === type && m.cal <= remaining.cal + 50)
+    .map(m => ({ ...m, score: scoreMeal(m, remaining) }))
+    .sort((a, b) => a.score - b.score)
+;
+}
+
+// ============================================================
 // APP STATE
 // ============================================================
 let state = {
@@ -571,7 +700,8 @@ let state = {
   customGrams: null,
   savedCustoms: [],  // [{ name, macros: {cal,pro,carb,fat}, ts }]
   history: {},       // { "2026-02-26": { items: [...], targets: {cal,pro,carb,fat}|null } }
-  viewMode: 'today'  // 'today' | 'history'
+  viewMode: 'today',  // 'today' | 'history'
+  bottomTab: 'profile' // 'profile' | 'match'
 };
 
 function todayKey() {
@@ -900,6 +1030,85 @@ function renderHistoryPane() {
 }
 
 // ============================================================
+// MEAL MATCHER RENDERER
+// ============================================================
+function renderMatchPane() {
+  var t = getActiveTargets();
+  var totals = getTotals();
+  if (!t) {
+    return '<div class="match-pane"><div class="match-empty">Set up your profile first to get meal suggestions based on remaining macros.</div></div>';
+  }
+
+  var rem = {
+    cal: t.cal - totals.cal,
+    pro: t.pro - totals.pro,
+    carb: t.carb - totals.carb,
+    fat: t.fat - totals.fat
+  };
+
+  if (rem.cal <= 50) {
+    return '<div class="match-pane"><div class="match-empty">You\'ve hit your calorie target for today! No suggestions needed.</div></div>';
+  }
+
+  var snacks = getMatchedMeals(rem, 'snack');
+  var meals = getMatchedMeals(rem, 'meal');
+  _lastMatchedSnacks = snacks;
+  _lastMatchedMeals = meals;
+
+  var html = '<div class="match-pane">';
+  html += '<h3>Match Me a Meal</h3>';
+  html += '<div style="font-size:11px;color:#94a3b8;margin-bottom:12px;">Remaining: <strong style="color:#fb923c">' + Math.round(rem.cal) + ' cal</strong>, ';
+  html += '<strong style="color:#4ade80">' + Math.round(rem.pro) + 'g pro</strong>, ';
+  html += '<strong style="color:#a78bfa">' + Math.round(rem.carb) + 'g carb</strong>, ';
+  html += '<strong style="color:#fb7185">' + Math.round(rem.fat) + 'g fat</strong></div>';
+
+  if (snacks.length > 0) {
+    html += '<div class="match-section"><div class="match-section-title">Snacks</div>';
+    snacks.forEach(function(m, i) {
+      html += '<div class="match-card" data-matchadd="snack-' + i + '">';
+      html += '<div><div class="match-card-name">' + m.name + '</div>';
+      html += '<div class="match-card-macros">';
+      html += '<span class="macro-cal">' + m.cal + '</span>';
+      html += '<span class="macro-pro">' + m.pro + 'p</span>';
+      html += '<span class="macro-carb">' + m.carb + 'c</span>';
+      html += '<span class="macro-fat">' + m.fat + 'f</span>';
+      html += '</div></div>';
+      html += '<button class="match-card-add" data-matchtype="snack" data-matchidx="' + i + '">+</button>';
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+
+  if (meals.length > 0) {
+    html += '<div class="match-section"><div class="match-section-title">Meals</div>';
+    meals.forEach(function(m, i) {
+      html += '<div class="match-card" data-matchadd="meal-' + i + '">';
+      html += '<div><div class="match-card-name">' + m.name + '</div>';
+      html += '<div class="match-card-macros">';
+      html += '<span class="macro-cal">' + m.cal + '</span>';
+      html += '<span class="macro-pro">' + m.pro + 'p</span>';
+      html += '<span class="macro-carb">' + m.carb + 'c</span>';
+      html += '<span class="macro-fat">' + m.fat + 'f</span>';
+      html += '</div></div>';
+      html += '<button class="match-card-add" data-matchtype="meal" data-matchidx="' + i + '">+</button>';
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+
+  if (snacks.length === 0 && meals.length === 0) {
+    html += '<div class="match-empty">No good matches for your remaining macros. Try the custom entry above.</div>';
+  }
+
+  html += '</div>';
+  return html;
+}
+
+// Store matched results for click handlers
+var _lastMatchedSnacks = [];
+var _lastMatchedMeals = [];
+
+// ============================================================
 // PROFILE PANE RENDERER (separate to avoid nested template literal issues)
 // ============================================================
 function renderProfilePane() {
@@ -1085,7 +1294,10 @@ function render() {
               <span class="macro-carb">${item.macros.carb}c</span>
               <span class="macro-fat">${item.macros.fat}f</span>
             </div>
-            <button class="remove-btn" data-remove="${i}">&times;</button>
+            <div class="item-actions">
+              <button class="clone-btn" data-clone="${i}" title="Add another">+</button>
+              <button class="remove-btn" data-remove="${i}">&times;</button>
+            </div>
           </div>
         `).join('')}
       </div>
@@ -1283,8 +1495,12 @@ function render() {
         </div>
       </div>
 
-      <!-- PROFILE & GOALS PANE -->
-      ${renderProfilePane()}
+      <!-- TABS: Profile | Match Me -->
+      <div class="bottom-tab-bar">
+        <button class="bottom-tab${state.bottomTab === 'profile' ? ' active' : ''}" data-btab="profile">Profile & Goals</button>
+        <button class="bottom-tab tab-match${state.bottomTab === 'match' ? ' active' : ''}" data-btab="match">Match Me</button>
+      </div>
+      ${state.bottomTab === 'match' ? renderMatchPane() : renderProfilePane()}
     </div>
     </div>
   `;
@@ -1527,12 +1743,67 @@ function bindEvents() {
     });
   });
 
+  // Clone buttons
+  document.querySelectorAll('.clone-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.dataset.clone);
+      const orig = state.dailyItems[idx];
+      if (!orig) return;
+      state.dailyItems.push({
+        name: orig.name,
+        amountLabel: orig.amountLabel,
+        grams: orig.grams,
+        macros: { ...orig.macros },
+        ts: Date.now(),
+        date: todayKey()
+      });
+      render();
+    });
+  });
+
   // Remove buttons
   document.querySelectorAll('.remove-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const idx = parseInt(btn.dataset.remove);
       state.dailyItems.splice(idx, 1);
       render();
+    });
+  });
+
+  // Bottom tabs (Profile / Match Me)
+  document.querySelectorAll('.bottom-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.bottomTab = btn.dataset.btab;
+      render();
+    });
+  });
+
+  // Meal matcher add buttons
+  document.querySelectorAll('.match-card-add').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const type = btn.dataset.matchtype;
+      const idx = parseInt(btn.dataset.matchidx);
+      const list = type === 'snack' ? _lastMatchedSnacks : _lastMatchedMeals;
+      const m = list[idx];
+      if (!m) return;
+      state.dailyItems.push({
+        name: m.name,
+        amountLabel: 'matched ' + type,
+        grams: 0,
+        macros: { cal: m.cal, pro: m.pro, carb: m.carb, fat: m.fat },
+        ts: Date.now(),
+        date: todayKey()
+      });
+      render();
+    });
+  });
+
+  // Also add on card click
+  document.querySelectorAll('.match-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const addBtn = card.querySelector('.match-card-add');
+      if (addBtn) addBtn.click();
     });
   });
 
