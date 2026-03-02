@@ -754,7 +754,7 @@ function scoreMeal(meal, remaining) {
   // Carb scoring — matters more in low-carb mode
   var carbRoom = Math.max(remaining.carb, 0); // treat negative as 0
   var carbOver = Math.max(0, meal.carb - carbRoom);
-  var carbPenalty = state.profile.lowCarb ? carbOver * 5 : carbOver;
+  var carbPenalty = state.profile.lowCarb ? carbOver * 2 : carbOver;
   return calOver * 3 + carbPenalty + calFit + proFit;
 }
 
