@@ -69,6 +69,7 @@
   .total-box .total-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 2px; }
   .total-box .total-value { font-size: 22px; font-weight: 700; }
   .total-pct { font-size: 12px; font-weight: 500; opacity: 0.65; }
+  .total-target { font-size: 10px; opacity: 0.45; margin-top: 2px; }
   .total-cal { background: #422006; }
   .total-cal .total-label { color: #fdba74; }
   .total-cal .total-value { color: #fb923c; }
@@ -1466,9 +1467,9 @@ function render() {
             </div>
             <div class="item-macros">
               <span class="macro-cal">${item.macros.cal}${targets ? `<span class="item-pct">${Math.round(item.macros.cal / targets.cal * 100)}%</span>` : ''}</span>
-              <span class="macro-pro">${item.macros.pro}p</span>
-              <span class="macro-carb">${item.macros.carb}c</span>
-              <span class="macro-fat">${item.macros.fat}f</span>
+              <span class="macro-pro">${item.macros.pro}p${targets ? `<span class="item-pct">${Math.round(item.macros.pro / targets.pro * 100)}%</span>` : ''}</span>
+              <span class="macro-carb">${item.macros.carb}c${targets ? `<span class="item-pct">${Math.round(item.macros.carb / targets.carb * 100)}%</span>` : ''}</span>
+              <span class="macro-fat">${item.macros.fat}f${targets ? `<span class="item-pct">${Math.round(item.macros.fat / targets.fat * 100)}%</span>` : ''}</span>
             </div>
             <div class="item-actions">
               <button class="clone-btn" data-clone="${i}" title="Add another">+</button>
@@ -1483,18 +1484,22 @@ function render() {
           <div class="total-box total-cal">
             <div class="total-label">Calories</div>
             <div class="total-value">${totals.cal}${targets ? ` <span class="total-pct">(${Math.round(totals.cal / targets.cal * 100)}%)</span>` : ''}</div>
+            ${targets ? `<div class="total-target">of ${targets.cal}</div>` : ''}
           </div>
           <div class="total-box total-pro">
             <div class="total-label">Protein</div>
-            <div class="total-value">${Math.round(totals.pro * 10) / 10}g</div>
+            <div class="total-value">${Math.round(totals.pro * 10) / 10}g${targets ? ` <span class="total-pct">(${Math.round(totals.pro / targets.pro * 100)}%)</span>` : ''}</div>
+            ${targets ? `<div class="total-target">of ${targets.pro}g</div>` : ''}
           </div>
           <div class="total-box total-carb">
             <div class="total-label">Carbs</div>
-            <div class="total-value">${Math.round(totals.carb * 10) / 10}g</div>
+            <div class="total-value">${Math.round(totals.carb * 10) / 10}g${targets ? ` <span class="total-pct">(${Math.round(totals.carb / targets.carb * 100)}%)</span>` : ''}</div>
+            ${targets ? `<div class="total-target">of ${targets.carb}g</div>` : ''}
           </div>
           <div class="total-box total-fat">
             <div class="total-label">Fat</div>
-            <div class="total-value">${Math.round(totals.fat * 10) / 10}g</div>
+            <div class="total-value">${Math.round(totals.fat * 10) / 10}g${targets ? ` <span class="total-pct">(${Math.round(totals.fat / targets.fat * 100)}%)</span>` : ''}</div>
+            ${targets ? `<div class="total-target">of ${targets.fat}g</div>` : ''}
           </div>
         </div>
       </div>
