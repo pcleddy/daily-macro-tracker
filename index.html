@@ -392,6 +392,11 @@
   .recipe-ingredients strong { color: #fbbf24; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
   .recipe-prep { font-size: 12px; color: #94a3b8; font-style: italic; }
   .recipe-prep strong { color: #fbbf24; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; font-style: normal; }
+  .dream-meal { margin-bottom: 12px; }
+  .dream-meal-header { font-size: 12px; font-weight: 700; color: #fbbf24; margin-bottom: 6px; }
+  .dream-meal-star { font-size: 14px; }
+  .dream-meal-sub { font-weight: 400; font-size: 11px; color: #92790a; }
+  .dream-card { border: 1px dashed #f59e0b !important; }
   .daily-item.has-recipe { cursor: pointer; }
   .daily-item.has-recipe:hover { background: #334155; }
 
@@ -745,6 +750,149 @@ const mealDB = [
   { name:"Açaí Bowl", type:"meal", tags:"breakfast vegetarian smoothie fruit bowl vegan", cal:380, pro:8, carb:62, fat:12, recipe:"1 cup açai (or acai bowl), ½ cup granola, ½ cup mixed berries, 2 tbsp coconut | Blend acai, top with granola, berries, coconut." },
 ];
 
+
+// ============================================================
+// DREAM MEAL COMPOSER — build a real meal from ingredients
+// ============================================================
+function composeDreamMeal(rem) {
+  var dCal = Math.max(rem.cal, 0);
+  var dPro = Math.max(rem.pro, 0);
+  var dCarb = Math.max(rem.carb, 0);
+  var dFat = Math.max(rem.fat, 0);
+  if (dCal < 50) return [];
+
+  // Building blocks — pick from real ingredients by id
+  var proteins = [
+    { id:1,  name:'Chicken Breast' },
+    { id:3,  name:'Salmon Fillet' },
+    { id:5,  name:'Turkey Breast' },
+    { id:6,  name:'Shrimp' },
+    { id:4,  name:'Eggs (whole)' },
+    { id:12, name:'Tilapia' },
+    { id:15, name:'Tofu (firm)' },
+    { id:13, name:'Steak (Sirloin)' },
+  ];
+  var carbs = [
+    { id:28, name:'White Rice (cooked)' },
+    { id:29, name:'Brown Rice (cooked)' },
+    { id:37, name:'Sweet Potato' },
+    { id:36, name:'Potato' },
+    { id:35, name:'Quinoa (cooked)' },
+    { id:30, name:'Pasta (cooked)' },
+  ];
+  var fats = [
+    { id:85, name:'Olive Oil' },
+    { id:21, name:'Butter' },
+    { id:86, name:'Avocado' },
+  ];
+  var vegs = [
+    { id:68, name:'Broccoli' },
+    { id:71, name:'Spinach' },
+    { id:72, name:'Mixed Salad Greens' },
+    { id:74, name:'Bell Pepper' },
+  ];
+
+  function getIng(id) {
+    return ingredients.find(function(i) { return i.id === id; });
+  }
+
+  // Score each protein by how well it fits
+  var bestCombo = null;
+  var bestScore = 999999;
+
+  proteins.forEach(function(p) {
+    var pIng = getIng(p.id);
+    if (!pIng) return;
+
+    // How many grams of protein to hit target? Cap at reasonable portion
+    var pGrams = dPro > 0 && pIng.per_g.pro > 0 ? Math.round(dPro / pIng.per_g.pro) : 0;
+    pGrams = Math.min(pGrams, 300); // max ~10oz
+    pGrams = Math.max(pGrams, 0);
+
+    var usedCal = pGrams * pIng.per_g.cal;
+    var usedPro = pGrams * pIng.per_g.pro;
+    var usedCarb = pGrams * pIng.per_g.carb;
+    var usedFat = pGrams * pIng.per_g.fat;
+
+    var remCal = dCal - usedCal;
+    var remCarb = dCarb - usedCarb;
+    var remFat = dFat - usedFat;
+
+    // Try each carb source
+    carbs.forEach(function(c) {
+      var cIng = getIng(c.id);
+      if (!cIng) return;
+
+      var cGrams = remCarb > 0 && cIng.per_g.carb > 0 ? Math.round(remCarb / cIng.per_g.carb) : 0;
+      cGrams = Math.min(cGrams, 400); // max ~2 cups cooked
+      cGrams = Math.max(cGrams, 0);
+
+      var usedCal2 = usedCal + cGrams * cIng.per_g.cal;
+      var usedFat2 = usedFat + cGrams * cIng.per_g.fat;
+      var remFat2 = dFat - usedFat2;
+
+      // Add fat source if needed
+      var fIdx = 0; // olive oil default
+      var fGrams = 0;
+      if (remFat2 > 3) {
+        var fIng = getIng(fats[fIdx].id);
+        if (fIng && fIng.per_g.fat > 0) {
+          fGrams = Math.round(remFat2 / fIng.per_g.fat);
+          fGrams = Math.min(fGrams, 45); // max ~3 tbsp
+          fGrams = Math.max(fGrams, 0);
+        }
+      }
+
+      // Add a veg (small fixed portion for completeness)
+      var vIdx = Math.floor(Math.random() * vegs.length); // random is fine, re-renders pick fresh
+      // Use deterministic pick based on protein id
+      vIdx = p.id % vegs.length;
+      var vIng = getIng(vegs[vIdx].id);
+      var vGrams = 80; // ~½ cup
+
+      // Calculate total macros
+      var fIng2 = getIng(fats[fIdx].id);
+      var totalCal = pGrams * pIng.per_g.cal
+        + cGrams * cIng.per_g.cal
+        + (fGrams > 0 && fIng2 ? fGrams * fIng2.per_g.cal : 0)
+        + (vIng ? vGrams * vIng.per_g.cal : 0);
+      var totalPro = pGrams * pIng.per_g.pro
+        + cGrams * cIng.per_g.pro
+        + (fGrams > 0 && fIng2 ? fGrams * fIng2.per_g.pro : 0)
+        + (vIng ? vGrams * vIng.per_g.pro : 0);
+      var totalCarb = pGrams * pIng.per_g.carb
+        + cGrams * cIng.per_g.carb
+        + (fGrams > 0 && fIng2 ? fGrams * fIng2.per_g.carb : 0)
+        + (vIng ? vGrams * vIng.per_g.carb : 0);
+      var totalFat = pGrams * pIng.per_g.fat
+        + cGrams * cIng.per_g.fat
+        + (fGrams > 0 && fIng2 ? fGrams * fIng2.per_g.fat : 0)
+        + (vIng ? vGrams * vIng.per_g.fat : 0);
+
+      // Score: how close to dream targets
+      var score = Math.abs(totalCal - dCal) + Math.abs(totalPro - dPro) * 2
+        + Math.abs(totalCarb - dCarb) * 2 + Math.abs(totalFat - dFat) * 2;
+
+      if (score < bestScore) {
+        bestScore = score;
+        var parts = [];
+        if (pGrams > 15) parts.push({ name: pIng.name, grams: pGrams, oz: Math.round(pGrams / 28.35 * 10) / 10 });
+        if (cGrams > 15) parts.push({ name: cIng.name, grams: cGrams });
+        if (fGrams > 3 && fIng2) parts.push({ name: fIng2.name, grams: fGrams });
+        if (vIng) parts.push({ name: vIng.name, grams: vGrams });
+        bestCombo = {
+          parts: parts,
+          cal: Math.round(totalCal),
+          pro: Math.round(totalPro),
+          carb: Math.round(totalCarb),
+          fat: Math.round(totalFat)
+        };
+      }
+    });
+  });
+
+  return bestCombo;
+}
 
 // Score a meal against remaining macros (lower = better fit)
 function scoreMeal(meal, remaining) {
@@ -1201,6 +1349,48 @@ function renderMatchPane() {
   html += '<strong style="color:#4ade80">' + Math.round(rem.pro) + 'g pro</strong>, ';
   html += '<strong style="color:#a78bfa">' + Math.round(rem.carb) + 'g carb</strong>, ';
   html += '<strong style="color:#fb7185">' + Math.round(rem.fat) + 'g fat</strong></div>';
+
+  // Dream Meal — compose a real meal from ingredients
+  var dCal = Math.max(Math.round(rem.cal), 0);
+  var dPro = Math.max(Math.round(rem.pro), 0);
+  var dCarb = Math.max(Math.round(rem.carb), 0);
+  var dFat = Math.max(Math.round(rem.fat), 0);
+  var dream = dCal > 50 ? composeDreamMeal(rem) : null;
+  if (dream && dream.parts.length > 0) {
+    html += '<div class="dream-meal">';
+    html += '<div class="dream-meal-header"><span class="dream-meal-star">&#9733;</span> Dream Meal <span class="dream-meal-sub">— hit every macro perfectly</span></div>';
+    html += '<div class="dream-card" style="border:1px dashed #f59e0b;background:#1a1500;border-radius:8px;padding:10px 14px;margin-bottom:4px;">';
+    // Ingredients list
+    html += '<div style="margin-bottom:6px;">';
+    dream.parts.forEach(function(p) {
+      var label = '';
+      if (p.oz && p.oz >= 1) {
+        label = Math.round(p.oz) + ' oz ' + p.name;
+      } else {
+        // Convert grams to friendly unit
+        if (p.grams >= 200) label = Math.round(p.grams / 186) + (Math.round(p.grams / 186) === 1 ? ' cup' : ' cups') + ' ' + p.name;
+        else if (p.grams >= 80) label = Math.round(p.grams) + 'g ' + p.name;
+        else if (p.grams >= 12 && (p.name === 'Olive Oil' || p.name === 'Butter')) label = Math.round(p.grams / 14) + ' tbsp ' + p.name;
+        else label = Math.round(p.grams) + 'g ' + p.name;
+      }
+      html += '<div style="font-size:12px;color:#e2e8f0;padding:2px 0;"><span style="color:#fbbf24;">&#8226;</span> ' + label + '</div>';
+    });
+    html += '</div>';
+    // Macro totals
+    html += '<div class="match-card-macros" style="margin-bottom:6px;">';
+    html += '<span class="macro-cal">' + dream.cal + '</span>';
+    html += '<span class="macro-pro">' + dream.pro + 'p</span>';
+    html += '<span class="macro-carb">' + dream.carb + 'c</span>';
+    html += '<span class="macro-fat">' + dream.fat + 'f</span>';
+    html += '</div>';
+    // Target comparison
+    html += '<div style="font-size:10px;color:#92790a;">Target: ' + dCal + ' cal, ' + dPro + 'p, ' + dCarb + 'c, ' + dFat + 'f</div>';
+    // Prep hint
+    html += '<div style="font-size:10px;color:#64748b;font-style:italic;margin-top:4px;">Season protein, cook in pan or grill. Prepare carb side. Add veg &amp; fat.</div>';
+    // Add button
+    html += '<div style="text-align:right;margin-top:6px;"><button class="match-card-add" id="dreamMealAdd" style="color:#f59e0b;font-size:18px;position:static;">+ Add to tracker</button></div>';
+    html += '</div></div>';
+  }
 
   if (snacks.length > 0) {
     html += '<div class="match-section"><div class="match-section-title">Snacks</div>';
@@ -1992,6 +2182,30 @@ function bindEvents() {
       state.matchSearch = '';
       state.matchTag = '';
       render();
+    });
+  }
+
+  // Dream meal add button
+  const dreamBtn = document.getElementById('dreamMealAdd');
+  if (dreamBtn) {
+    dreamBtn.addEventListener('click', function() {
+      var t = getActiveTargets();
+      var totals = getTotals();
+      if (!t) return;
+      var remObj = { cal: t.cal - totals.cal, pro: t.pro - totals.pro, carb: t.carb - totals.carb, fat: t.fat - totals.fat };
+      var dream = composeDreamMeal(remObj);
+      if (!dream || dream.parts.length === 0) return;
+      var label = dream.parts.map(function(p) { return p.name; }).join(' + ');
+      state.dailyItems.push({
+        name: 'Dream: ' + label,
+        amountLabel: 'perfect finish',
+        grams: 0,
+        macros: { cal: dream.cal, pro: dream.pro, carb: dream.carb, fat: dream.fat },
+        ts: Date.now(),
+        date: todayKey()
+      });
+      render();
+      flashIfExceeded();
     });
   }
 
